@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cv-fit-zh"
+version = "0.1.0"
+description = "JD-driven Chinese resume rewriter — paste an old resume + a job description, get an ATS-friendly Chinese resume PDF with JD keyword coverage scoring."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "SuperMarioYL" },
+]
+keywords = ["resume", "jd", "ats", "chinese", "llm", "deepseek", "qwen", "fastapi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+dependencies = [
+    "fastapi>=0.115",
+    "openai>=1.50",
+    "weasyprint>=62",
+    "jinja2>=3.1",
+    "python-docx>=1.1",
+    "pydantic>=2.9",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/SuperMarioYL/cv-fit-zh"
+Repository = "https://github.com/SuperMarioYL/cv-fit-zh"
+Issues = "https://github.com/SuperMarioYL/cv-fit-zh/issues"
+
+# The import package is `app` (see target_files: app/main.py, app/config.py, ...).
+# Hatchling auto-discovers the `app` package from the repo root.
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "app",
+    "web",
+    "tests",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "VERSION",
+    "docs/demo.tape",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["assets", "docs"]
+
+[tool.ruff.lint]
+# Lenient by design: only critical errors (syntax/undefined/unused) so the
+# green-CI gate stays stable without bikeshedding style.
+select = ["E9", "F", "I"]
+ignore = ["F401"]  # re-exports in __init__ are intentional
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]

@@ -1,0 +1,90 @@
+{# ATS-friendly Chinese resume template.
+   Single column, no tables (domestic ATS parsers read left-to-right, top-to-bottom;
+   tables break extraction). SimSun/思源宋体 fallback chain, 2cm margins.
+   The JD keyword coverage block sits at the bottom as an appendix so it never
+   interleaves with the resume body. #}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ basics.name or '简历' }} · cv-fit-zh</title>
+</head>
+<body>
+  {% if watermark %}
+  <div class="watermark">{{ watermark }}</div>
+  {% endif %}
+
+  <header class="resume-header">
+    <h1 class="name">{{ basics.name or '简历' }}</h1>
+    {% if basics.phone or basics.email %}
+    <p class="contact">{{ basics.phone }}{% if basics.phone and basics.email %} | {% endif %}{{ basics.email }}</p>
+    {% endif %}
+    {% if basics.summary %}
+    <p class="summary">{{ basics.summary }}</p>
+    {% endif %}
+  </header>
+
+  {% set ns = namespace(idx=0) %}
+  {% if experience %}
+  <section class="block">
+    <h2 class="block-title">工作经历</h2>
+    {% for exp in experience %}
+    <div class="entry">
+      <p class="entry-head">
+        <span class="company">{{ exp.company }}</span>
+        <span class="title">{{ exp.title }}</span>
+        <span class="dates">{{ exp.dates }}</span>
+      </p>
+      <ul class="bullets">
+        {% for b in exp.bullets %}
+        <li class="bullet">{{ b }}</li>
+        {% if ns.idx < rewritten|length and rewritten[ns.idx].star and rewritten[ns.idx].star != rewritten[ns.idx].orig %}
+        <li class="bullet star-bullet">
+          <span class="star-label">改写：</span>{{ rewritten[ns.idx].star }}
+          {% if rewritten[ns.idx].covers_keywords %}
+          <span class="covers">{{ rewritten[ns.idx].covers_keywords | join('、') }}</span>
+          {% endif %}
+        </li>
+        {% endif %}
+        {% set ns.idx = ns.idx + 1 %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if education %}
+  <section class="block">
+    <h2 class="block-title">教育背景</h2>
+    {% for edu in education %}
+    <div class="entry">
+      <p class="entry-head">
+        <span class="school">{{ edu.school }}</span>
+        <span class="title">{{ edu.degree }}</span>
+        <span class="dates">{{ edu.dates }}</span>
+      </p>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="block coverage-block">
+    <h2 class="block-title">JD 关键词覆盖</h2>
+    <p class="coverage-score">
+      关键词覆盖 {{ coverage.matched|length }}/{{ coverage.matched|length + coverage.missing|length }}
+      （{{ '%.0f' % (coverage.score * 100) }}%）
+    </p>
+    {% if coverage.matched %}
+    <p class="coverage-line"><span class="cov-label">已覆盖</span>：{{ coverage.matched | join('、') }}</p>
+    {% endif %}
+    {% if coverage.missing %}
+    <p class="coverage-line missing"><span class="cov-label">待补强</span>：{{ coverage.missing | join('、') }}</p>
+    {% endif %}
+  </section>
+
+  {% if watermark %}
+  <p class="watermark-footer">{{ watermark }} · 自托管完全免费，去水印 ¥9.9/投递</p>
+  {% endif %}
+</body>
+</html>

@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install system libs for weasyprint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libcairo2
+      - name: Install uv
+        run: pip install uv
+      - name: Install the package + dev deps
+        run: uv pip install --system -e ".[dev]"
+      - name: Lint (ruff)
+        run: ruff check app tests
+      - name: Test (pytest)
+        run: pytest -q

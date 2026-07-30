@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cv-fit-zh · JD 驱动的中文简历改写器</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>" />
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --ink: #1d1d1f;
+      --muted: #6e6e73;
+      --line: #d2d2d7;
+      --primary: #0071e3;
+      --primary-ink: #0a4f9e;
+      --green: #10a37f;
+      --amber: #b8860b;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: baseline; gap: 12px; }
+    .logo { font-weight: 700; font-size: 18px; }
+    .tagline { color: var(--muted); font-size: 13px; }
+    .gh { color: var(--primary); text-decoration: none; font-size: 13px; }
+    .layout {
+      flex: 1; display: grid; grid-template-columns: 1.4fr 1fr;
+      gap: 20px; padding: 20px; max-width: 1180px; margin: 0 auto; width: 100%;
+    }
+    .input-col, .output-col { display: flex; flex-direction: column; gap: 16px; }
+    .field label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+    .field textarea {
+      width: 100%; resize: vertical; padding: 12px; border: 1px solid var(--line);
+      border-radius: var(--radius); font-family: inherit; font-size: 13px;
+      line-height: 1.6; background: var(--surface); color: var(--ink);
+    }
+    .field textarea:focus { outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0,113,227,0.15); }
+    .actions { display: flex; align-items: center; gap: 12px; }
+    button {
+      font-family: inherit; font-size: 14px; border: none; border-radius: var(--radius);
+      padding: 10px 18px; cursor: pointer; transition: opacity .15s, transform .05s;
+    }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .primary { background: var(--primary); color: #fff; }
+    .secondary { background: var(--surface); color: var(--primary); border: 1px solid var(--primary); }
+    .stub { background: var(--surface); color: var(--amber); border: 1px solid var(--amber); }
+    .status { color: var(--muted); font-size: 13px; }
+    .status.error { color: #c0392b; }
+    .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 16px;
+    }
+    .card h3 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+    .coverage .score-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+    .coverage .score { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .coverage .score-label { color: var(--muted); font-size: 13px; }
+    .kw-block { display: flex; flex-direction: column; gap: 8px; }
+    .kw-line { margin: 0; font-size: 13px; line-height: 1.7; }
+    .kw-label { font-weight: 600; margin-right: 6px; }
+    .kw-line.matched .kw-label { color: var(--green); }
+    .kw-line.missing .kw-label { color: var(--amber); }
+    .kw-line.missing { color: var(--muted); }
+    .rewrite-list { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow: auto; }
+    .rewrite-list li {
+      padding: 8px 10px; margin-bottom: 6px; border-radius: 8px; font-size: 13px;
+      background: #f0f5ff; border-left: 3px solid var(--primary); color: var(--primary-ink);
+    }
+    .rewrite-list .covers { display: block; margin-top: 4px; font-size: 11px; color: var(--green); }
+    .dl-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .watermark-note p { margin: 4px 0; font-size: 12px; color: var(--muted); }
+    .stub-detail { background: #fff8e1; border-radius: 8px; padding: 10px; font-size: 12px; }
+    .footer {
+      text-align: center; padding: 16px; color: var(--muted); font-size: 12px;
+      border-top: 1px solid var(--line); background: var(--surface);
+    }
+    @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">cv-fit-zh</span>
+      <span class="tagline">旧简历 + JD → ATS 友好的中文简历 PDF</span>
+    </div>
+    <a class="gh" href="https://github.com/SuperMarioYL/cv-fit-zh" target="_blank" rel="noopener">GitHub</a>
+  </header>
+
+  <main class="layout">
+    <section class="input-col">
+      <div class="field">
+        <label for="resume">旧简历（粘贴全文）</label>
+        <textarea id="resume" rows="14" placeholder="把你的旧简历全文粘贴到这里…" spellcheck="false"></textarea>
+      </div>
+      <div class="field">
+        <label for="jd">目标岗位 JD（粘贴全文）</label>
+        <textarea id="jd" rows="14" placeholder="把目标岗位的 JD 全文粘贴到这里…" spellcheck="false"></textarea>
+      </div>
+      <div class="actions">
+        <button id="generate" class="primary" type="button">生成简历</button>
+        <span id="status" class="status" role="status" aria-live="polite"></span>
+      </div>
+      <p class="hint">免费 1 次/天（带水印）；自托管完全免费。去水印 ¥9.9/投递。</p>
+    </section>
+
+    <aside class="output-col" id="output-col" hidden>
+      <div class="card coverage">
+        <h3>JD 关键词覆盖</h3>
+        <div class="score-row">
+          <span class="score" id="coverage-score">—</span>
+          <span class="score-label">关键词覆盖</span>
+        </div>
+        <div class="kw-block">
+          <p class="kw-line matched"><span class="kw-label">已覆盖</span><span id="matched-kw" class="kw-list"></span></p>
+          <p class="kw-line missing"><span class="kw-label">待补强</span><span id="missing-kw" class="kw-list"></span></p>
+        </div>
+      </div>
+
+      <div class="card preview">
+        <h3>STAR 改写预览</h3>
+        <ul id="rewritten-list" class="rewrite-list"></ul>
+      </div>
+
+      <div class="card download">
+        <h3>下载</h3>
+        <div class="dl-row">
+          <button id="dl-pdf" class="primary" type="button">下载 PDF</button>
+          <button id="dl-docx" class="secondary" type="button">下载 docx</button>
+        </div>
+        <div class="watermark-note" id="wm-note">
+          <p>当前为免费带水印版。</p>
+          <button id="unwatermark" class="stub" type="button">去水印 ¥9.9/投递</button>
+          <p class="stub-detail" id="stub-detail" hidden>
+            v0.1 暂未接入在线支付：请微信转账 ¥9.9 至开发者，收款后发送去水印版。<br />
+            （真实支付在 v0.2 接入；自托管始终完全免费，无水印。）
+          </p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span>开源核心 · 按投递计费 · 自托管完全免费</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
