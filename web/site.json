@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "name": "cv-fit-zh",
+  "github": "https://github.com/SuperMarioYL/cv-fit-zh",
+  "host": "cv-fit-zh.lei6393.com",
+  "lang": { "primary": "zh", "toggle": true },
+  "accent": ["#1f3a5f", "#e6a144", "#7fb3a6"],
+  "hero": {
+    "eyebrow": { "zh": "中文简历 · JD 对齐 · 关键词覆盖", "en": "Chinese resume · JD-aligned · keyword coverage" },
+    "headline": {
+      "zh": "把旧简历对准一个岗位\n30 秒拿到 HR 能过的中文简历",
+      "en": "Point your old resume at one job\nget a Chinese resume HR will read — in 30s"
+    },
+    "sub": {
+      "zh": "粘贴旧简历 + 岗位 JD，一次完成 STAR 改写、关键词覆盖评分、ATS 友好排版，直出 PDF。",
+      "en": "Paste your old resume and a job JD. STAR rewrite, keyword-coverage score, and ATS-friendly Chinese layout — straight to PDF, in one pass."
+    },
+    "command": "uvicorn app.main:app   # → localhost:8000",
+    "cta": { "zh": "去 GitHub 试用", "en": "Try it on GitHub" },
+    "ctaGithub": { "zh": "开源 · MIT", "en": "Open source · MIT" },
+    "scroll": { "zh": "看它怎么改", "en": "See how it rewrites" }
+  },
+  "advantages": [
+    {
+      "title": { "zh": "改写 + 评分 + 排版，一次交易", "en": "Rewrite + score + layout in one pass" },
+      "body": {
+        "zh": "不再先让豆包写一堆散文 bullet、再拿 Word 重新排版。一份 JD、一份旧简历，30 秒出可投递的 PDF。",
+        "en": "No more drafting bullets in one app and re-formatting in Word. One JD, one old resume — a submittable PDF in 30 seconds."
+      },
+      "chips": ["› STAR 改写", "› 关键词覆盖分", "› 中文 ATS 排版"]
+    },
+    {
+      "title": { "zh": "看清 JD 到底要什么", "en": "See exactly what the JD asks for" },
+      "body": {
+        "zh": "解析岗位 JD 拆出硬技能与关键词，把每条经历对齐到它覆盖的词——覆盖多少一目了然。",
+        "en": "Parses the JD into hard skills and keywords, pairs each experience bullet with the terms it covers — coverage at a glance."
+      },
+      "chips": ["› JD 关键词拆解", "› 逐条覆盖映射", "› 像 18/22 这样的分"]
+    },
+    {
+      "title": { "zh": "中文 ATS 真正友好的排版", "en": "Layout Chinese ATS actually reads" },
+      "body": {
+        "zh": "单栏、无表格、SimSun / 思源宋体、2cm 页边距——不踩国内 ATS 解析的坑，HR 那边过得了第一关。",
+        "en": "Single column, no tables, SimSun / Source Han Serif, 2cm margins — built around how Chinese ATS parses, so it clears the first HR screen."
+      },
+      "chips": ["› 单栏无表格", "› SimSun / 思源宋体", "› PDF + docx 兜底"]
+    },
+    {
+      "title": { "zh": "开源核心，按投递计费", "en": "Open core, pay per application" },
+      "body": {
+        "zh": "改写引擎和模板 MIT 开源、本地可跑；投递高峰期按投递计费，不为月卡付冤枉钱。",
+        "en": "The rewrite engine and templates are MIT open source and run locally; at peak application season you pay per application — no wasted monthly subscription."
+      },
+      "chips": ["› MIT 开源", "› 本地可跑", "› 按投递计费"]
+    }
+  ],
+  "scene": { "kind": "particle-field" },
+  "cta": {
+    "headline": { "zh": "秋招开幕周，投得更准", "en": "Apply sharper this hiring season" },
+    "sub": { "zh": "把每份投递的简历都对准那个岗位。", "en": "Aim every application's resume at the job behind the JD." },
+    "button": { "zh": "在 GitHub 上试用", "en": "Try it on GitHub" }
+  },
+  "footer": { "tag": { "zh": "MIT 开源 · 面向中文求职者", "en": "MIT open source · built for Chinese job seekers" } }
+}
