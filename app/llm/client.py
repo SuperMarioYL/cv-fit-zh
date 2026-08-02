@@ -58,6 +58,17 @@ class _ModelTarget:
             kwargs["response_format"] = {"type": "json_object"}
         try:
             resp = self._client.chat.completions.create(**kwargs)
+            # v0.2 (fix-llm-empty-choices-crash): some OpenAI-compatible endpoints
+            # return an empty `choices` list on a content-moderation refusal
+            # (common for DeepSeek/Qwen on Chinese resume text). Indexing
+            # resp.choices[0] raised IndexError, which is NOT an APIError, so it
+            # escaped complete_json's `except LLMError` and 500'd the request
+            # without ever trying the qwen2.5-72b fallback. Guard it: surface an
+            # LLMError so the fallback loop in complete_json catches it.
+            if not getattr(resp, "choices", None):
+                raise LLMError(
+                    f"{self.name} returned no choices (likely content_filter/refusal)"
+                )
             return resp.choices[0].message.content or ""
         except (APITimeoutError, APIConnectionError, RateLimitError, _OpenAIAPIError) as exc:
             raise LLMError(f"{self.name} call failed: {exc}") from exc

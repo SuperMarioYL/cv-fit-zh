@@ -63,3 +63,40 @@ def test_rewritten_bullet_model_defaults():
     assert b.orig == ""
     assert b.star == ""
     assert b.covers_keywords == []
+
+
+def test_rewrite_star_coverage_matches_highlights(mock_llm, sample_jd, sample_resume):
+    """v0.2 fix (fix-coverage-score-highlight-mismatch): the displayed coverage
+    score and the per-bullet covers_keywords MUST come from the same matcher, so
+    the score (e.g. 18/22) agrees with the count of keywords highlighted on the
+    PDF. Previously rewrite_star rolled up coverage via the LLM semantic matcher
+    but annotated each bullet via the deterministic substring matcher, so the
+    two diverged on synonyms not in the alias table. Now both use the same
+    deterministic matcher.
+    """
+    parsed_jd = parse_jd(sample_jd)
+    parsed_resume = parse_resume(sample_resume)
+    result = rewrite_star(parsed_jd, parsed_resume)
+
+    matched = result.coverage.matched
+    total = len(matched) + len(result.coverage.missing)
+
+    # 1. Every keyword the score counts as "covered" must be highlighted on at
+    #    least one bullet (consistency: score↔highlight).
+    union_of_bullet_covers = set()
+    for b in result.rewritten:
+        union_of_bullet_covers.update(b.covers_keywords)
+    assert set(matched) == union_of_bullet_covers, (
+        "coverage.matched != union of per-bullet covers_keywords — score and "
+        "highlights disagree"
+    )
+
+    # 2. score == matched/total (the honest roll-up). The Coverage validator
+    #    rounds to 4 decimals, so compare against the rounded honest value.
+    if total:
+        assert result.coverage.score == round(len(matched) / total, 4)
+
+    # 3. No bullet claims a keyword the global score calls missing (no phantom).
+    for b in result.rewritten:
+        for kw in b.covers_keywords:
+            assert kw in matched

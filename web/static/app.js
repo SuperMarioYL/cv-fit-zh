@@ -21,8 +21,10 @@ const els = {
 
 // The last JDResume produced by /api/rewrite; reused by /api/export.
 let lastResult = null;
-// Free tier default = watermarked. The ¥9.9 unwatermark is a stub (GTM §8).
+// Free tier default = watermarked. The ¥9.9/投递 unwatermark flow (v0.2) creates
+// a paid order via /api/payment and re-exports with its order_token.
 let watermark = true;
+let paidOrderToken = null;
 
 function setStatus(msg, isError) {
   els.status.textContent = msg || "";
@@ -111,6 +113,7 @@ async function downloadExport(format) {
     setStatus("请先生成简历。", true);
     return;
   }
+  const willWatermark = watermark && !paidOrderToken;
   setStatus(`导出 ${format.toUpperCase()} 中…`);
   try {
     const resp = await fetch("/api/export", {
@@ -123,6 +126,7 @@ async function downloadExport(format) {
         coverage: lastResult.coverage,
         format: format,
         watermark: watermark,
+        ...(paidOrderToken ? { order_token: paidOrderToken } : {}),
       }),
     });
     if (!resp.ok) {
@@ -138,7 +142,7 @@ async function downloadExport(format) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    setStatus(`已下载 ${format.toUpperCase()}${watermark ? "（带水印）" : ""}。`);
+    setStatus(`已下载 ${format.toUpperCase()}${willWatermark ? "（带水印）" : "（无水印）"}。`);
   } catch (e) {
     setStatus("导出失败：" + e.message, true);
   }
@@ -148,9 +152,45 @@ els.generate.addEventListener("click", generate);
 els.dlPdf.addEventListener("click", () => downloadExport("pdf"));
 els.dlDocx.addEventListener("click", () => downloadExport("docx"));
 
-// 去水印 ¥9.9 stub: explain the manual payment path (GTM §8). Does NOT flip
-// watermark off automatically — the dev confirms payment then ships the
-// unwatermarked file. Real payment lands in v0.2.
-els.unwatermark.addEventListener("click", () => {
-  els.stubDetail.hidden = !els.stubDetail.hidden;
+// v0.2 — ¥9.9/投递 unwatermark flow: create a paid order via /api/payment,
+// poll until paid (dev/free path returns paid immediately), then mark the
+// session unwatermarked so the next /api/export carries the order_token.
+els.unwatermark.addEventListener("click", async () => {
+  setStatus("创建去水印订单…");
+  try {
+    const create = await fetch("/api/payment", { method: "POST" });
+    if (!create.ok) {
+      const err = await create.json().catch(() => ({ detail: create.statusText }));
+      throw new Error(err.detail || `HTTP ${create.status}`);
+    }
+    const order = await create.json();
+    if (order.code_url) {
+      // Real WeChat path: show the QR for the user to scan + pay.
+      els.stubDetail.hidden = false;
+      els.stubDetail.innerHTML =
+        `<p>微信扫码支付 ¥${order.amount_yuan}：扫下方二维码完成支付后，点"下载 PDF"即出无水印版。</p>` +
+        `<img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(order.code_url)}" alt="WeChat Pay QR" width="240" height="240" />`;
+      setStatus("微信扫码支付后，点下载即出无水印。轮询支付状态…");
+    } else {
+      // Dev/free self-host path: auto-paid.
+      setStatus(order.dev_mode ? "自托管免费模式：已免水印。" : "订单已支付，可下载无水印版。");
+    }
+    const token = order.order_token;
+    // Poll order status until paid (real path); dev path is already paid.
+    for (let i = 0; i < 60; i++) {
+      const s = await fetch(`/api/payment/${token}`);
+      if (s.ok) {
+        const st = await s.json();
+        if (st.paid) {
+          paidOrderToken = token;
+          setStatus("已解锁无水印，点「下载 PDF/docx」即可。");
+          return;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    setStatus("支付确认超时，请重试。", true);
+  } catch (e) {
+    setStatus("去水印失败：" + e.message, true);
+  }
 });

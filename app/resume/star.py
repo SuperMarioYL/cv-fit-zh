@@ -21,7 +21,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.jd.keywords import Coverage, extract_keywords, score_coverage
+from app.jd.keywords import (
+    Coverage,
+    extract_keywords,
+    score_coverage,
+    score_coverage_deterministic,
+)
 from app.jd.parser import ParsedJD
 from app.llm.client import LLMError, get_client
 from app.llm.prompts import STAR_REWRITE_SYSTEM, STAR_REWRITE_USER
@@ -125,9 +130,18 @@ def rewrite_star(parsed_jd: ParsedJD, parsed_resume: ParsedResume) -> JDResume:
         rewritten = _rewrite_passthrough(parsed_resume)
 
     star_bullets = [b.star for b in rewritten]
-    coverage = score_coverage(star_bullets, parsed_jd)
-    # Back-fill each bullet's covers_keywords from the coverage roll-up so the
-    # per-bullet keyword annotation is consistent with the global score.
+    # v0.2 (fix-coverage-score-highlight-mismatch): previously this called
+    # score_coverage() (LLM semantic matcher) for the roll-up while
+    # _annotate_bullet_coverage() re-derived each bullet's covers_keywords via
+    # the deterministic _keyword_hit matcher. The two diverged on synonyms not
+    # in the alias table, so the displayed score (e.g. 18/22) disagreed with
+    # the count of keywords actually highlighted on the PDF. Use the SAME
+    # deterministic matcher for the roll-up so score == highlighted-count.
+    # (The LLM semantic coverage call is still available via score_coverage()
+    # for direct callers, but the rewrite pipeline no longer mixes matchers.)
+    coverage = score_coverage_deterministic(star_bullets, parsed_jd)
+    # Back-fill each bullet's covers_keywords from the deterministic matcher so
+    # the on-PDF keyword highlighting is consistent with the global score.
     _annotate_bullet_coverage(rewritten, coverage)
 
     return JDResume(jd=parsed_jd, resume=parsed_resume, rewritten=rewritten, coverage=coverage)

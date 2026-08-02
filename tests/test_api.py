@@ -93,6 +93,7 @@ def test_export_docx(client, sample_jd, sample_resume):
     assert resp.content[:2] == b"PK"
 
 
+@skip_no_weasyprint
 def test_export_unwatermarked_has_no_watermark_text(client, sample_jd, sample_resume):
     """Paid path: watermark=False should not stamp the watermark text."""
     result = _rewrite_result(client, sample_jd, sample_resume)

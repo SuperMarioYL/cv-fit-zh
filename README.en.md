@@ -144,10 +144,10 @@ Configured via environment variables — no config file required to boot (only r
 
 > A commercial product, priced per application. Open-source core, fully free to self-host.
 
-- **Self-host is free**: run locally with full functionality, no watermark, no limits. That's the "open-source core" boundary — the tool itself is free.
-- **¥9.9 / application (unwatermark)**: a stub in v0.1 — local runs are free 1×/day with a "cv-fit-zh 生成" watermark; pay ¥9.9 to remove it. v0.1 routes the first payment manually via WeChat transfer (to validate willingness-to-pay); real online payment lands in v0.2.
+- **Self-host is free**: run locally with full functionality, no watermark, no limits. That's the "open-source core" boundary — the tool itself is free. As of v0.2, `CVFIT_PAYMENT_DISABLED=1` (or simply leaving the WeChat merchant fields unset) routes the free unwatermark path — self-hosting is always fully free.
+- **¥9.9 / application (unwatermark)**: v0.2 wires the real payment flow — `POST /api/payment` creates a ¥9.9 order, the WeChat scan-to-pay confirmation lets `/api/export` render the unwatermarked PDF. Real WeChat Pay v3 Native (scan) is integrated via the `wechatpayv3` SDK and activates when you configure the merchant credentials (`CVFIT_WECHAT_*` env + `pip install wechatpayv3`); without them it falls back to the self-host free unwatermark path.
 - **Per-resume economics**: ~3 DeepSeek-V3 calls per rewrite, ~2k tokens each, sub-¥1 cost — leaving ~10× margin against the ¥9.9/application price.
-- **v0.2 roadmap**: evaluate a ¥39/month autumn-recruitment season pass (unlimited); real payment (WeChat Pay scan) + object storage for unwatermarked PDF download links.
+- **Next steps**: evaluate a ¥39/month autumn-recruitment season pass (unlimited); object storage for unwatermarked PDF download links.
 
 Why charge when the core is open? You pay for the *convenience of unwatermarked hosted delivery*, not a feature lock — self-hosting is always fully free.
 
@@ -157,9 +157,10 @@ Why charge when the core is open? You pay for the *convenience of unwatermarked 
 - [x] **m2 JD + old-resume structured parsing** (title/skills/responsibilities/experience entries)
 - [x] **m3 experience STAR rewrite + keyword-coverage scoring** (matched/missing/score)
 - [x] **m4 Chinese ATS typesetting + PDF/docx export + web UI** (first release)
-- [ ] v0.2 real payment (WeChat Pay) + automated unwatermark delivery
-- [ ] v0.2 JD auto-scraping evaluation (Boss/Liepin/Zhaopin — anti-bot/risk TBD)
-- [ ] v0.2 multiple Chinese typesetting templates + light in-app editor
+- [x] **v0.2 real ¥9.9/application payment flow** (`/api/payment` + `/api/payment/notify` + WeChat Pay v3 Native scan; the self-host free unwatermark path lands at the same time)
+- [x] **v0.2 fix: LLM empty-choices fallback crash** (content-moderation refusals no longer 500; correctly falls over to Qwen)
+- [x] **v0.2 fix: coverage-score vs highlight mismatch** (score and per-bullet highlights now come from one matcher)
+- [ ] v0.3 multiple Chinese typesetting templates + light in-app editor
 - [ ] v0.3 hosted form (self-host free + hosted paid — not multi-tenant SaaS)
 
 ## License

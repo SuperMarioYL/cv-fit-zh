@@ -1,10 +1,14 @@
 """FastAPI application — the single process serving the cv-fit-zh web UI + API.
 
 Layout:
-  GET  /            → web/templates/index.html (single page: two text boxes + button)
-  POST /api/rewrite → parse JD + resume, STAR rewrite, coverage → JDResume JSON
-  POST /api/export  → render the JDResume to PDF/docx → download
-  GET  /api/health  → liveness probe
+  GET  /                       → web/templates/index.html (single page: two text boxes + button)
+  POST /api/rewrite            → parse JD + resume, STAR rewrite, coverage → JDResume JSON
+  POST /api/export             → render the JDResume to PDF/docx → download
+  POST /api/payment            → create a ¥9.9/投递 unwatermark order (v0.2)
+  GET  /api/payment/notify     → WeChat payment async callback (v0.2)
+  GET  /api/payment/{token}    → poll an order's paid status (v0.2)
+  GET  /api/health             → liveness probe
+  GET  /api/version            → version probe
 
 No DB, no queue, no multi-tenant — one stateless process per the mvp_plan §4
 "一个 binary（uvicorn）". Run with: ``uvicorn app.main:app``.
@@ -22,6 +26,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import __version__
 from app.api.export import router as export_router
+from app.api.payment import router as payment_router
 from app.api.rewrite import router as rewrite_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -46,6 +51,7 @@ if WEB_STATIC.exists():
 # API routers.
 app.include_router(rewrite_router)
 app.include_router(export_router)
+app.include_router(payment_router)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -63,6 +69,7 @@ async def health() -> JSONResponse:
             "status": "ok",
             "version": __version__,
             "llm_configured": bool(settings.api_key or settings.fallback_api_key),
+            "payment_configured": not settings.payment_disabled,
         }
     )
 

@@ -2,20 +2,22 @@
 
 Takes the JDResume JSON produced by /api/rewrite and a format selector.
 Returns the rendered file as a download. ``watermark`` defaults to True (free
-tier); the ¥9.9/投递 unwatermark path is a front-end stub per GTM §8 — the
-button explains the manual-WeChat-payment flow, and only flips watermark off
-once the user has paid and the dev confirms (v0.2 adds real payment).
+tier); v0.2 wires the real ¥9.9/投递 unwatermark flow: a request carrying a
+*paid* ``order_token`` (from POST /api/payment) is rendered WITHOUT the
+watermark, regardless of the ``watermark`` flag. This is the unlock the v0.1.0
+plan explicitly deferred to v0.2 ("支付在 v0.2").
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from app.api.payment import is_paid_order
 from app.config import settings
 from app.export import render_docx_bytes, render_pdf_bytes
 from app.jd.keywords import Coverage
@@ -38,6 +40,11 @@ class ExportRequest(BaseModel):
     format: ExportFormat = "pdf"
     # Free tier = watermarked; paid ¥9.9 removes the watermark. Default watermarked.
     watermark: bool = True
+    # v0.2: a paid order token (from POST /api/payment) grants the unwatermark.
+    # When present AND paid, the output is rendered without the watermark even
+    # if the client left `watermark: True`. Missing/expired/unpaid tokens are
+    # ignored (the free-tier watermark stands).
+    order_token: Optional[str] = None
 
 
 def _to_jd_resume(req: ExportRequest) -> JDResume:
@@ -53,7 +60,10 @@ def _to_jd_resume(req: ExportRequest) -> JDResume:
 def export_endpoint(req: ExportRequest) -> Response:
     """Render the given JDResume to PDF or docx and return it for download."""
     jd_resume = _to_jd_resume(req)
-    watermark_text = settings.watermark_text if req.watermark else None
+    # v0.2: a paid order token grants the unwatermark (overrides watermark=True).
+    paid = bool(req.order_token) and is_paid_order(req.order_token)
+    wants_watermark = req.watermark and not paid
+    watermark_text = settings.watermark_text if wants_watermark else None
     if req.format == "pdf":
         try:
             data = render_pdf_bytes(jd_resume, watermark=watermark_text)

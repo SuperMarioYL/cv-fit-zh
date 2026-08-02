@@ -43,10 +43,23 @@ class Settings:
     port: int = field(default_factory=lambda: int(os.environ.get("CVFIT_PORT", "8000")))
 
     # Free tier: 1 watermarked rewrite per day per local install (no DB — the
-    # counter is in-memory and resets on restart; the ¥9.9/投递 unwatermark is a
-    # stub per the GTM §8 plan, real payment lands in v0.2).
+    # counter is in-memory and resets on restart; the ¥9.9/投递 unwatermark path
+    # is the real payment flow, v0.2 — see app/api/payment.py).
     free_daily_quota: int = field(default_factory=lambda: int(os.environ.get("CVFIT_FREE_QUOTA", "1")))
     watermark_text: str = field(default_factory=lambda: os.environ.get("CVFIT_WATERMARK", "cv-fit-zh 生成"))
+
+    # --- Payment (v0.2 — ¥9.9/投递 unwatermark) ---
+    # CVFIT_PAYMENT_DISABLED=1 → DevFreeProvider auto-unwatermarks for self-host
+    # (the open-core free path). Configure the WeChat fields to enable real
+    # ¥9.9 WeChat Pay v3 Native (扫码) payment (requires `pip install wechatpayv3`).
+    payment_disabled: bool = field(default_factory=lambda: _env_bool("CVFIT_PAYMENT_DISABLED", False))
+    payment_price_cents: int = field(default_factory=lambda: int(os.environ.get("CVFIT_PAYMENT_PRICE_CENTS", "999")))
+    payment_notify_url: str = field(default_factory=lambda: os.environ.get("CVFIT_PAYMENT_NOTIFY_URL", ""))
+    wechat_appid: str = field(default_factory=lambda: os.environ.get("CVFIT_WECHAT_APPID", ""))
+    wechat_mchid: str = field(default_factory=lambda: os.environ.get("CVFIT_WECHAT_MCHID", ""))
+    wechat_serial_no: str = field(default_factory=lambda: os.environ.get("CVFIT_WECHAT_SERIAL_NO", ""))
+    wechat_private_key_path: str = field(default_factory=lambda: os.environ.get("CVFIT_WECHAT_PRIVATE_KEY_PATH", ""))
+    wechat_apiv3_key: str = field(default_factory=lambda: os.environ.get("CVFIT_WECHAT_APIV3_KEY", ""))
 
     # --- LLM call tuning ---
     request_timeout: float = field(default_factory=lambda: float(os.environ.get("CVFIT_TIMEOUT", "60")))
