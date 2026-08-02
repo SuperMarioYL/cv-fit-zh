@@ -46,12 +46,12 @@
       "chips": ["› 单栏无表格", "› SimSun / 思源宋体", "› PDF + docx 兜底"]
     },
     {
-      "title": { "zh": "开源核心，按投递计费", "en": "Open core, pay per application" },
+      "title": { "zh": "开源核心，¥9.9 去水印", "en": "Open core, ¥9.9 unwatermark" },
       "body": {
-        "zh": "改写引擎和模板 MIT 开源、本地可跑；投递高峰期按投递计费，不为月卡付冤枉钱。",
-        "en": "The rewrite engine and templates are MIT open source and run locally; at peak application season you pay per application — no wasted monthly subscription."
+        "zh": "改写引擎和模板 MIT 开源、本地可跑。要无水印版？付 ¥9.9/投递，支付完即可下载——投递高峰期按需付费，不为月卡付冤枉钱。",
+        "en": "The rewrite engine and templates are MIT open source and run locally. Want the unwatermarked version? Pay ¥9.9 per application and download it right away — pay per application at peak season, no wasted monthly subscription."
       },
-      "chips": ["› MIT 开源", "› 本地可跑", "› 按投递计费"]
+      "chips": ["› MIT 开源", "› 本地可跑", "› ¥9.9 去水印"]
     }
   ],
   "scene": { "kind": "particle-field" },
