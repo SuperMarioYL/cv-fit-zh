@@ -51,9 +51,21 @@ log = logging.getLogger("cvfit.api.payment")
 
 router = APIRouter(prefix="/api/payment", tags=["payment"])
 
-# ¥9.9 per application (matches the plan's GTM §8 pricing + the v0.1 stub copy).
-PRICE_PER_APPLICATION_CENTS = 999
-PRICE_PER_APPLICATION_YUAN = 9.99
+# ¥9.9 per application by default (matches the plan's GTM §8 pricing). The exact
+# amount is read from settings.payment_price_cents (the CVFIT_PAYMENT_PRICE_CENTS
+# env var) so an operator can change the price without touching code; a 0/empty
+# value falls back to the default so a misconfiguration can't make it free.
+
+
+def _price_cents() -> int:
+    """The per-application unwatermark price in cents, from settings.
+
+    Sourced from the ``CVFIT_PAYMENT_PRICE_CENTS`` env var (default 999 = ¥9.9).
+    A 0/empty value is treated as the default so the unwatermark can't be silently
+    made free.
+    """
+    return settings.payment_price_cents or 999
+
 
 # In-memory order store. TTL'd so a stale token can't unwatermark forever; the
 # free quota counter in app/config.py uses the same in-process posture (no DB).
@@ -290,12 +302,12 @@ def create_order() -> CreateOrderResponse:
     provider = get_provider()
     out_trade_no = _new_out_trade_no()
     try:
-        result = provider.create_order(out_trade_no, PRICE_PER_APPLICATION_CENTS)
+        result = provider.create_order(out_trade_no, _price_cents())
     except PaymentNotConfigured as exc:
         # Provider said it could do real payment but creds vanished between
         # resolution and the call — degrade to the free path rather than 500.
         log.warning("paid provider not configured at call time (%s); dev/free fallback", exc)
-        result = DevFreeProvider().create_order(out_trade_no, PRICE_PER_APPLICATION_CENTS)
+        result = DevFreeProvider().create_order(out_trade_no, _price_cents())
     return CreateOrderResponse(**result.model_dump())
 
 

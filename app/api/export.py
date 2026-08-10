@@ -38,7 +38,9 @@ class ExportRequest(BaseModel):
     rewritten: list[RewrittenBullet] = Field(default_factory=list)
     coverage: Coverage = Field(default_factory=Coverage)
     format: ExportFormat = "pdf"
-    # Free tier = watermarked; paid ¥9.9 removes the watermark. Default watermarked.
+    # Free tier = watermarked; a paid ¥9.9 order_token is the only unwatermark
+    # trigger. v0.3: the client `watermark` flag is no longer honored for the
+    # unwatermark decision, so `watermark: false` cannot bypass the paywall.
     watermark: bool = True
     # v0.2: a paid order token (from POST /api/payment) grants the unwatermark.
     # When present AND paid, the output is rendered without the watermark even
@@ -60,9 +62,12 @@ def _to_jd_resume(req: ExportRequest) -> JDResume:
 def export_endpoint(req: ExportRequest) -> Response:
     """Render the given JDResume to PDF or docx and return it for download."""
     jd_resume = _to_jd_resume(req)
-    # v0.2: a paid order token grants the unwatermark (overrides watermark=True).
+    # v0.3: only a paid order token removes the watermark. The client `watermark`
+    # flag is dropped from this decision so `watermark: false` cannot bypass the
+    # ¥9.9 unwatermark paywall. Missing/expired/unpaid tokens are ignored (the
+    # free-tier watermark stands).
     paid = bool(req.order_token) and is_paid_order(req.order_token)
-    wants_watermark = req.watermark and not paid
+    wants_watermark = not paid
     watermark_text = settings.watermark_text if wants_watermark else None
     if req.format == "pdf":
         try:

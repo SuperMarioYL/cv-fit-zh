@@ -95,9 +95,17 @@ def test_export_docx(client, sample_jd, sample_resume):
 
 @skip_no_weasyprint
 def test_export_unwatermarked_has_no_watermark_text(client, sample_jd, sample_resume):
-    """Paid path: watermark=False should not stamp the watermark text."""
+    """Paid path: a paid order_token renders the PDF without the watermark text.
+
+    v0.3 changed the contract so only a paid order_token (not the client
+    ``watermark`` flag) removes the watermark; this now exercises that path.
+    """
     result = _rewrite_result(client, sample_jd, sample_resume)
-    resp = client.post("/api/export", json={**result, "format": "pdf", "watermark": False})
+    order = client.post("/api/payment").json()
+    resp = client.post(
+        "/api/export",
+        json={**result, "format": "pdf", "watermark": True, "order_token": order["order_token"]},
+    )
     assert resp.status_code == 200
     # The watermark string from settings should not appear as a page label.
     # (PDF is binary; a full text extraction is heavy — we assert the response
