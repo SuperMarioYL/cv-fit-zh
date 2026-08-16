@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from app.api.payment import is_paid_order
+from app.api.payment import consume_paid_order
 from app.config import settings
 from app.export import render_docx_bytes, render_pdf_bytes
 from app.jd.keywords import Coverage
@@ -66,7 +66,11 @@ def export_endpoint(req: ExportRequest) -> Response:
     # flag is dropped from this decision so `watermark: false` cannot bypass the
     # ¥9.9 unwatermark paywall. Missing/expired/unpaid tokens are ignored (the
     # free-tier watermark stands).
-    paid = bool(req.order_token) and is_paid_order(req.order_token)
+    # v0.4.0: the paid grant is claimed atomically (check-and-consume) so a real
+    # paid order token is single-use — a replay falls back to watermarked. The
+    # dev/free self-host path (dev_mode=True) is exempt (stays paid). See
+    # app/api/payment.py:consume_paid_order.
+    paid = bool(req.order_token) and consume_paid_order(req.order_token)
     wants_watermark = not paid
     watermark_text = settings.watermark_text if wants_watermark else None
     if req.format == "pdf":

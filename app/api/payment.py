@@ -78,13 +78,18 @@ class _OrderStore:
     def __init__(self) -> None:
         self._orders: dict[str, dict[str, Any]] = {}
 
-    def create(self, out_trade_no: str, amount_cents: int) -> str:
+    def create(self, out_trade_no: str, amount_cents: int, dev_mode: bool = False) -> str:
         token = secrets.token_urlsafe(24)
         self._orders[token] = {
             "out_trade_no": out_trade_no,
             "amount_cents": amount_cents,
             "status": "created",
             "created_at": time.time(),
+            # v0.4.0: dev/free self-host orders are EXEMPT from single-use
+            # consumption (the consumed-state guard must not break the free
+            # self-host flow — see consume_paid). Real WeChat paid orders
+            # (dev_mode=False) are single-use per the ¥9.9/投递 pricing.
+            "dev_mode": dev_mode,
         }
         return token
 
@@ -107,6 +112,27 @@ class _OrderStore:
     def is_paid(self, token: str) -> bool:
         order = self.get(token)
         return bool(order and order["status"] == "paid")
+
+    def consume_paid(self, token: str) -> bool:
+        """Atomically claim the unwatermark grant for a paid order (single-use).
+
+        Returns True iff the order is currently ``paid`` (and within TTL). For
+        real paid orders (``dev_mode=False``) the order is flipped to the
+        terminal ``consumed`` state so the token can't be replayed for a second
+        unwatermarked export — matching the plan's ¥9.9/投递 single-use pricing
+        (mvp_plan §1/§5 m5_real_payment/readme_pitch "按投递计费...¥9.9 单次"). For
+        the dev/free self-host path (``dev_mode=True``, auto-paid) the order
+        STAYS ``paid`` so self-hosters keep the free unwatermark flow on re-export
+        (the consumed-state guard must not break it). A consumed/expired/unpaid
+        token returns False so /api/export falls back to the watermarked free tier
+        instead of unwatermarking — the unwatermark privilege is single-use.
+        """
+        order = self.get(token)
+        if order is None or order["status"] != "paid":
+            return False
+        if not order.get("dev_mode", False):
+            order["status"] = "consumed"
+        return True
 
 
 _store = _OrderStore()
@@ -156,7 +182,7 @@ class DevFreeProvider(PaymentProvider):
     name = "dev_free"
 
     def create_order(self, out_trade_no: str, amount_cents: int) -> OrderResult:
-        token = _store.create(out_trade_no, amount_cents)
+        token = _store.create(out_trade_no, amount_cents, dev_mode=True)
         _store.mark_paid(token, out_trade_no)
         return OrderResult(
             order_token=token,
@@ -222,7 +248,7 @@ class WeChatNativeProvider(PaymentProvider):
         )
 
     def create_order(self, out_trade_no: str, amount_cents: int) -> OrderResult:  # pragma: no cover
-        token = _store.create(out_trade_no, amount_cents)
+        token = _store.create(out_trade_no, amount_cents, dev_mode=False)
         code_url = self._client().pay.native(
             description="cv-fit-zh 去水印 ¥%.2f" % (amount_cents / 100),
             out_trade_no=out_trade_no,
@@ -243,10 +269,23 @@ class WeChatNativeProvider(PaymentProvider):
         result = self._client().callback(headers=dict(headers), body=raw_body.decode("utf-8"))
         out_trade_no = result.get("out_trade_no", "")
         paid = result.get("trade_state") == "SUCCESS"
+        # v0.4.0: confirm the callback's paid amount equals the order's price so
+        # a mismatched-amount callback can't unlock a different-priced order.
+        callback_amount = (result.get("amount") or {}).get("total")
         if paid and out_trade_no:
-            # Mark the matching local order paid (reverse-lookup by out_trade_no).
             for tok, order in list(_store._orders.items()):
                 if order.get("out_trade_no") == out_trade_no:
+                    if (
+                        callback_amount is not None
+                        and callback_amount != order.get("amount_cents")
+                    ):
+                        log.warning(
+                            "WeChat notify amount mismatch for %s: callback=%s order=%s",
+                            out_trade_no,
+                            callback_amount,
+                            order.get("amount_cents"),
+                        )
+                        return NotifyResult(out_trade_no=out_trade_no, paid=False)
                     _store.mark_paid(tok, out_trade_no)
                     break
         return NotifyResult(out_trade_no=out_trade_no, paid=paid)
@@ -283,8 +322,27 @@ def _new_out_trade_no() -> str:
 
 
 def is_paid_order(order_token: str) -> bool:
-    """Public hook for /api/export: is this order token a paid unwatermark grant?"""
+    """Public hook for /api/export: is this order token a paid unwatermark grant?
+
+    v0.4.0: a consumed real paid order is no longer "paid" (status=="consumed"),
+    so this returns False for a replayed single-use token — the unwatermark
+    privilege does not survive consumption. Dev/free orders are never consumed.
+    """
     return _store.is_paid(order_token)
+
+
+def consume_paid_order(order_token: str) -> bool:
+    """Public hook for /api/export: atomically claim a paid order's unwatermark
+    grant (single-use for real paid orders; free-flow for dev/self-host orders).
+
+    Returns True iff the token is a paid, in-TTL order. Real paid orders
+    (``dev_mode=False``) are flipped to ``consumed`` here so a replay against
+    /api/export returns False (the second export falls back to watermarked).
+    Dev/free self-host orders (``dev_mode=True``) stay ``paid`` so the free
+    self-host unwatermark flow is unaffected. Use this instead of a separate
+    ``is_paid_order`` check + later consume to avoid a check-then-consume race.
+    """
+    return _store.consume_paid(order_token)
 
 
 class CreateOrderResponse(OrderResult):
@@ -319,7 +377,20 @@ def notify_get(request: Request) -> dict[str, str]:
 
 @router.post("/notify")
 async def notify_post(request: Request) -> dict[str, str]:
-    """WeChat async payment callback. Verifies the signature + marks the order paid."""
+    """WeChat async payment callback. Verifies the signature + marks the order paid.
+
+    v0.4.0: the real WeChat verify path (WeChatNativeProvider.verify_notify)
+    performs RSA-SHA256 signature verification, AES-GCM decryption and JSON
+    parsing; its expected failure modes are signature-mismatch / malformed-body /
+    missing-header (and transient network errors) — NONE of which are
+    PaymentNotConfigured. v0.1–v0.3 caught only PaymentNotConfigured, so any such
+    error escaped uncaught → FastAPI returned HTTP 500 → WeChat treated it as
+    failure and retried to exhaustion, and the order was never marked paid (a
+    user who actually paid ¥9.9 never got the unwatermark unlock). v0.4.0
+    broadens the except to ``Exception`` (logged, NOT swallowed silently) and
+    always returns HTTP 200 + ``{"code":"FAIL",...}`` so WeChat retries cleanly
+    instead of hitting a 500. The real error is surfaced in the logs.
+    """
     raw = await request.body()
     headers = {k.lower(): v for k, v in request.headers.items()}
     provider = get_provider()
@@ -327,6 +398,12 @@ async def notify_post(request: Request) -> dict[str, str]:
         result = provider.verify_notify(raw, headers)
     except PaymentNotConfigured:
         return {"code": "FAIL", "message": "payment not configured"}
+    except Exception as exc:  # noqa: BLE001 — signature/parse/decrypt errors must not 500
+        # WeChat v3 callback contract: a non-200 / non-{"code":"SUCCESS"} response
+        # is treated as failure and retried. Returning 200 + FAIL lets WeChat retry
+        # cleanly (within its retry budget) instead of exhausting retries on 500s.
+        log.exception("WeChat notify verification failed")
+        return {"code": "FAIL", "message": str(exc)}
     return {"code": "SUCCESS" if result.paid else "FAIL", "message": "OK"}
 
 

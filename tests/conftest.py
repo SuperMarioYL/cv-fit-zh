@@ -94,6 +94,23 @@ def offline_llm():
         llm_client_mod._client = prev
 
 
+# --- v0.4.0: reset the in-process free-rewrite quota between tests ---------
+# The per-IP daily free-rewrite counter (app/api/rewrite.py:_quota) is a
+# module-level singleton shared across tests via the TestClient's single client
+# host. Without a per-test reset, the default 1/day cap would cascade: the first
+# test to call /api/rewrite would consume the only slot and every later test's
+# /api/rewrite call would 429. Resetting before each test keeps each test's
+# first rewrite under quota (mirrors the offline_llm autouse pattern above).
+
+@pytest.fixture(autouse=True)
+def reset_free_quota():
+    """Clear the in-process free-rewrite quota counter before each test."""
+    from app.api.rewrite import _quota
+
+    _quota.reset()
+    yield
+
+
 # --- mock LLM: canned responses keyed on the prompt ------------------------
 
 class _FakeLLMClient:
