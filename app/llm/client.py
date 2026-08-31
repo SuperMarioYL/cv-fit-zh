@@ -140,7 +140,27 @@ def _parse_json_lenient(raw: str) -> dict[str, Any]:
         end = text.rfind("}")
         if start != -1 and end != -1 and end > start:
             text = text[start : end + 1]
-    return json.loads(text)
+    obj = json.loads(text)
+    # v0.5.0 (fix-llm-nondict-response-attributeerror): every downstream coerce
+    # calls ``raw.get(...)`` (app/resume/star.py, app/jd/parser.py,
+    # app/resume/parser.py, app/jd/keywords.py). A model can emit a non-object
+    # JSON value (a JSON array / string / number) under content-filter drift or
+    # json-mode drift; ``json.loads`` happily returns a list/str/float, and
+    # ``raw.get`` then raises AttributeError — which is NOT in any caller's
+    # ``(LLMError, ValueError)`` fallback catch, so the documented
+    # heuristic/passthrough/deterministic fallback never engages and the request
+    # 500s/502s instead of degrading. Enforce the dict contract here: a non-dict
+    # response raises ValueError, which every caller already catches and falls
+    # back from (parse_jd -> heuristic, parse_resume -> heuristic, rewrite_star
+    # -> passthrough, score_coverage -> deterministic). This is the same
+    # defect-class as the v0.2 fix-llm-empty-choices-crash (an uncaught
+    # exception defeating the model fallback), closed at the parse layer the
+    # v0.2 fix left unguarded.
+    if not isinstance(obj, dict):
+        raise ValueError(
+            f"LLM JSON was not a JSON object (got {type(obj).__name__})"
+        )
+    return obj
 
 
 # Module-level singleton. Constructed lazily-aware: tests monkeypatch this.

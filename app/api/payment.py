@@ -366,6 +366,24 @@ def create_order() -> CreateOrderResponse:
         # resolution and the call — degrade to the free path rather than 500.
         log.warning("paid provider not configured at call time (%s); dev/free fallback", exc)
         result = DevFreeProvider().create_order(out_trade_no, _price_cents())
+    except Exception as exc:  # noqa: BLE001 — real-WeChat create must not 500
+        # v0.5.0 (fix-payment-create-order-narrow-exception-scope): the real
+        # WeChat create path (WeChatNativeProvider.create_order -> self._client()
+        # -> open(wechat_private_key_path) + WeChatPay(...) + .pay.native(...))
+        # raises FileNotFoundError / PermissionError / SDK errors that are NOT
+        # PaymentNotConfigured. v0.1–v0.4 caught only PaymentNotConfigured here,
+        # so a misconfigured real-payment setup (e.g. a wrong/unreadable
+        # private-key path — a very plausible misconfiguration) escaped uncaught
+        # -> HTTP 500 on POST /api/payment, bricking the ¥9.9 unwatermark flow
+        # before a QR was ever shown. This mirrors the v0.4.0
+        # fix-wechat-notify-broaden-exception-scope posture (don't 500 on the
+        # real-WeChat error surface): broaden the catch, log it (NOT swallowed),
+        # and degrade to the DevFreeProvider free path so the order-create call
+        # returns a clean 200 dev/free order instead of a 500. The real paid path
+        # is unaffected when creds are correct (create_order returns normally);
+        # only the error path changes.
+        log.warning("paid provider create_order failed (%s); dev/free fallback", exc)
+        result = DevFreeProvider().create_order(out_trade_no, _price_cents())
     return CreateOrderResponse(**result.model_dump())
 
 

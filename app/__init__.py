@@ -5,4 +5,4 @@ ATS-friendly Chinese resume PDF with JD keyword coverage scoring. v0.2 adds the
 real ¥9.9/投递 unwatermark payment flow (see app/api/payment.py).
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
