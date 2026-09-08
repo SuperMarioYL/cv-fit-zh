@@ -1,0 +1,38 @@
+{
+  "mode": "auto",
+  "id": "e65686-e7836a-f6ace0-1ef17e611ffc",
+  "identity": "https://github.com/supermarioyl/cv-fit-zh",
+  "primary": "#e65686",
+  "secondary": "#e7836a",
+  "highlight": "#f6ace0",
+  "dark": {
+    "bg": "#0a070e",
+    "panel": "#13101a",
+    "code": "#140d16",
+    "ink": "#fdeef9",
+    "muted": "#b29cb1",
+    "line": "#3a1828",
+    "primary": "#e65686",
+    "secondary": "#e7836a",
+    "highlight": "#f6ace0",
+    "accent": "#e65686",
+    "buttonStart": "#c74a74",
+    "buttonEnd": "#ae6250",
+    "buttonText": "#ffffff"
+  },
+  "light": {
+    "bg": "#fef9fb",
+    "panel": "#fef7f9",
+    "code": "#fdf3f7",
+    "ink": "#271622",
+    "muted": "#725e74",
+    "line": "#f7cbda",
+    "primary": "#bd476e",
+    "secondary": "#a55d4c",
+    "highlight": "#8e6482",
+    "accent": "#bd476e",
+    "buttonStart": "#c74a74",
+    "buttonEnd": "#ae6250",
+    "buttonText": "#ffffff"
+  }
+}

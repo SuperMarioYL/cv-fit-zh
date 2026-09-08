@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cv-fit-zh"
 version = "0.5.0"
-description = "JD-driven Chinese resume rewriter — paste an old resume + a job description, get an ATS-friendly Chinese resume PDF with JD keyword coverage scoring."
+description = "Chinese resume workflow with job-description parsing, optional LLM rewriting, deterministic keyword coverage and PDF/DOCX export."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"

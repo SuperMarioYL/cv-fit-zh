@@ -1,64 +1,215 @@
 {
-  "schema": 1,
+  "schema": 3,
   "name": "cv-fit-zh",
   "github": "https://github.com/SuperMarioYL/cv-fit-zh",
   "host": "cv-fit-zh.lei6393.com",
-  "lang": { "primary": "zh", "toggle": true },
-  "accent": ["#1f3a5f", "#e6a144", "#7fb3a6"],
+  "palette": "auto",
+  "lang": {
+    "primary": "en",
+    "toggle": true
+  },
+  "meta": {
+    "visual_style": "neon-particle",
+    "demo_source": "docs/demo-results.json"
+  },
   "hero": {
-    "eyebrow": { "zh": "中文简历 · JD 对齐 · 关键词覆盖", "en": "Chinese resume · JD-aligned · keyword coverage" },
     "headline": {
-      "zh": "把旧简历对准一个岗位\n30 秒拿到 HR 能过的中文简历",
-      "en": "Point your old resume at one job\nget a Chinese resume HR will read — in 30s"
+      "en": "See how your experience matches a job description",
+      "zh": "看清你的经历与岗位要求如何对应"
     },
     "sub": {
-      "zh": "粘贴旧简历 + 岗位 JD，一次完成 STAR 改写、关键词覆盖评分、ATS 友好排版，直出 PDF。",
-      "en": "Paste your old resume and a job JD. STAR rewrite, keyword-coverage score, and ATS-friendly Chinese layout — straight to PDF, in one pass."
+      "en": "cv-fit-zh pairs a Chinese resume with a target job description, structures the input, optionally rewrites experience bullets, and exports a document with visible keyword coverage.",
+      "zh": "cv-fit-zh 将中文简历与目标 JD 配对，整理输入，可选用模型改写经历条目，并导出带关键词覆盖信息的文档。"
     },
-    "command": "uvicorn app.main:app   # → localhost:8000",
-    "cta": { "zh": "去 GitHub 试用", "en": "Try it on GitHub" },
-    "ctaGithub": { "zh": "开源 · MIT", "en": "Open source · MIT" },
-    "scroll": { "zh": "看它怎么改", "en": "See how it rewrites" }
+    "href": "#quickstart"
   },
   "advantages": [
     {
-      "title": { "zh": "改写 + 评分 + 排版，一次交易", "en": "Rewrite + score + layout in one pass" },
-      "body": {
-        "zh": "不再先让豆包写一堆散文 bullet、再拿 Word 重新排版。一份 JD、一份旧简历，30 秒出可投递的 PDF。",
-        "en": "No more drafting bullets in one app and re-formatting in Word. One JD, one old resume — a submittable PDF in 30 seconds."
+      "title": {
+        "en": "Keep original context",
+        "zh": "保留原始经历"
       },
-      "chips": ["› STAR 改写", "› 关键词覆盖分", "› 中文 ATS 排版"]
+      "body": {
+        "en": "Each rewritten bullet retains its original text for comparison.",
+        "zh": "每条改写内容保留原文，方便逐项比较。"
+      }
     },
     {
-      "title": { "zh": "看清 JD 到底要什么", "en": "See exactly what the JD asks for" },
-      "body": {
-        "zh": "解析岗位 JD 拆出硬技能与关键词，把每条经历对齐到它覆盖的词——覆盖多少一目了然。",
-        "en": "Parses the JD into hard skills and keywords, pairs each experience bullet with the terms it covers — coverage at a glance."
+      "title": {
+        "en": "Explain coverage",
+        "zh": "解释覆盖情况"
       },
-      "chips": ["› JD 关键词拆解", "› 逐条覆盖映射", "› 像 18/22 这样的分"]
+      "body": {
+        "en": "Matched and missing keywords accompany the numeric score.",
+        "zh": "分数同时列出已匹配和缺失关键词。"
+      }
     },
     {
-      "title": { "zh": "中文 ATS 真正友好的排版", "en": "Layout Chinese ATS actually reads" },
-      "body": {
-        "zh": "单栏、无表格、SimSun / 思源宋体、2cm 页边距——不踩国内 ATS 解析的坑，HR 那边过得了第一关。",
-        "en": "Single column, no tables, SimSun / Source Han Serif, 2cm margins — built around how Chinese ATS parses, so it clears the first HR screen."
+      "title": {
+        "en": "Export the same result",
+        "zh": "导出同一份结果"
       },
-      "chips": ["› 单栏无表格", "› SimSun / 思源宋体", "› PDF + docx 兜底"]
-    },
-    {
-      "title": { "zh": "开源核心，¥9.9 去水印", "en": "Open core, ¥9.9 unwatermark" },
       "body": {
-        "zh": "改写引擎和模板 MIT 开源、本地可跑。要无水印版？付 ¥9.9/投递，支付完即可下载——投递高峰期按需付费，不为月卡付冤枉钱。",
-        "en": "The rewrite engine and templates are MIT open source and run locally. Want the unwatermarked version? Pay ¥9.9 per application and download it right away — pay per application at peak season, no wasted monthly subscription."
-      },
-      "chips": ["› MIT 开源", "› 本地可跑", "› ¥9.9 去水印"]
+        "en": "PDF and DOCX rendering reuse structured data without repeating the rewrite.",
+        "zh": "PDF 与 DOCX 复用结构化数据，无需再次改写。"
+      }
     }
   ],
-  "scene": { "kind": "particle-field" },
-  "cta": {
-    "headline": { "zh": "秋招开幕周，投得更准", "en": "Apply sharper this hiring season" },
-    "sub": { "zh": "把每份投递的简历都对准那个岗位。", "en": "Aim every application's resume at the job behind the JD." },
-    "button": { "zh": "在 GitHub 上试用", "en": "Try it on GitHub" }
+  "demo": {
+    "title": {
+      "en": "Run it on a complete example",
+      "zh": "运行完整示例"
+    },
+    "note": {
+      "en": "The supplied Python example provides all four JD keywords and two synthetic experience bullets, then runs score_coverage_deterministic. No credentials or external model call are used.",
+      "zh": "随仓 Python 示例给出全部四个 JD 关键词及两条合成经历，运行 score_coverage_deterministic，不使用凭据或外部模型调用。"
+    },
+    "source": "https://github.com/SuperMarioYL/cv-fit-zh/blob/main/docs/demo-results.json",
+    "steps": [
+      {
+        "label": "Recorded run",
+        "body": "Deterministic JD keyword coverage of complete synthetic resume bullets. No model rewrite or ATS validation.",
+        "command": ".venv/bin/python examples/presentation_demo.py",
+        "output": "{\n  \"jd\": {\n    \"title\": \"后端工程师\",\n    \"must_skills\": [\n      \"Python\",\n      \"SQL\",\n      \"Kubernetes\"\n    ],\n    \"nice_skills\": [\n      \"Redis\"\n    ],\n    \"responsibilities\": []\n  },\n  \"resume_bullets\": [\n    \"使用 FastAPI 开发服务，使用 PostgreSQL 保存业务数据。\",\n    \"使用 Redis 缓存查询结果。\"\n  ]\n}\n{\n  \"matched\": [\n    \"Python\",\n    \"SQL\",\n    \"Redis\"\n  ],\n  \"missing\": [\n    \"Kubernetes\"\n  ],\n  \"score\": 0.75\n}\nScope: deterministic substring/alias coverage; no LLM rewrite or ATS evaluation.",
+        "image": "/assets/presentation/demo-0-light.svg",
+        "imageDark": "/assets/presentation/demo-0-dark.svg"
+      }
+    ]
   },
-  "footer": { "tag": { "zh": "MIT 开源 · 面向中文求职者", "en": "MIT open source · built for Chinese job seekers" } }
+  "quickstart": {
+    "title": {
+      "en": "Try it locally",
+      "zh": "本地上手"
+    },
+    "body": {
+      "en": "The supplied Python example provides all four JD keywords and two synthetic experience bullets, then runs score_coverage_deterministic. No credentials or external model call are used.",
+      "zh": "随仓 Python 示例给出全部四个 JD 关键词及两条合成经历，运行 score_coverage_deterministic，不使用凭据或外部模型调用。"
+    },
+    "steps": [
+      {
+        "title": {
+          "en": "Install from source",
+          "zh": "从源码安装"
+        },
+        "code": "git clone https://github.com/SuperMarioYL/cv-fit-zh.git\ncd cv-fit-zh\nuv venv --python 3.12\nsource .venv/bin/activate\nuv pip install -e ."
+      },
+      {
+        "title": {
+          "en": "Run the included example",
+          "zh": "运行随仓示例"
+        },
+        "code": ".venv/bin/python examples/presentation_demo.py"
+      }
+    ]
+  },
+  "limitations": [
+    {
+      "en": "Without a usable model, parsing uses heuristics and rewriting keeps original bullets. That fallback is not generated STAR writing.",
+      "zh": "模型不可用时使用启发式解析，改写保留原条目；此回退并不是模型生成的 STAR 文案。"
+    },
+    {
+      "en": "Coverage is substring/alias matching, not semantic proof, an ATS vendor score or an interview prediction.",
+      "zh": "覆盖是子串和别名匹配，不是语义证明、ATS 厂商评分或面试预测。"
+    },
+    {
+      "en": "Quota and order state are in-process. This demo does not verify payment, PDF rendering or a production deployment.",
+      "zh": "额度和订单状态保存在进程内。本示例未验证支付、PDF 渲染或生产部署。"
+    }
+  ],
+  "scene": {
+    "kind": "neon-graph",
+    "fallback": "/assets/presentation/scene-dark.svg",
+    "fallbackLight": "/assets/presentation/scene-light.svg"
+  },
+  "story": {
+    "intro": {
+      "title": {
+        "en": "A concrete task",
+        "zh": "从实际任务出发"
+      },
+      "body": {
+        "en": "When adapting a resume, it is easy to change the wording without checking whether the job’s required skills are represented. A shared JDResume object keeps the original experience, rewritten bullets and coverage result together for review and export.",
+        "zh": "调整简历时，容易只改措辞，却没有检查岗位要求是否得到体现。统一的 JDResume 对象同时保存原始经历、改写条目和覆盖结果，便于审阅和导出。"
+      }
+    },
+    "sections": [
+      {
+        "title": {
+          "en": "Follow the operation",
+          "zh": "处理过程"
+        },
+        "body": {
+          "en": "JD and resume parsers create Pydantic models. The rewrite stage asks a configured OpenAI-compatible client for STAR-style bullets and falls back to the original text when unavailable. The active rewrite pipeline uses one deterministic coverage matcher for both its score and highlights. Export renders the assembled JDResume through Jinja2/WeasyPrint or python-docx.",
+          "zh": "JD 和简历解析器创建 Pydantic 模型。改写阶段调用已配置的 OpenAI 兼容客户端生成 STAR 条目，不可用时保留原文。当前改写流程使用同一个确定性覆盖匹配器生成分数和高亮。导出器通过 Jinja2、WeasyPrint 或 python-docx 渲染组装后的 JDResume。"
+        },
+        "image": {
+          "light": "/assets/presentation/process-light.svg",
+          "dark": "/assets/presentation/process-dark.svg",
+          "alt": {
+            "en": "Follow the operation",
+            "zh": "处理过程"
+          }
+        }
+      },
+      {
+        "title": {
+          "en": "Structured input connects rewriting and export",
+          "zh": "结构化输入连接改写与导出"
+        },
+        "body": {
+          "en": "JD and resume parsers create Pydantic models. The rewrite stage asks a configured OpenAI-compatible client for STAR-style bullets and falls back to the original text when unavailable. The active rewrite pipeline uses one deterministic coverage matcher for both its score and highlights. Export renders the assembled JDResume through Jinja2/WeasyPrint or python-docx.",
+          "zh": "JD 和简历解析器创建 Pydantic 模型。改写阶段调用已配置的 OpenAI 兼容客户端生成 STAR 条目，不可用时保留原文。当前改写流程使用同一个确定性覆盖匹配器生成分数和高亮。导出器通过 Jinja2、WeasyPrint 或 python-docx 渲染组装后的 JDResume。"
+        },
+        "image": {
+          "light": "/assets/presentation/architecture-light.svg",
+          "dark": "/assets/presentation/architecture-dark.svg",
+          "alt": {
+            "en": "Structured input connects rewriting and export",
+            "zh": "结构化输入连接改写与导出"
+          }
+        }
+      },
+      {
+        "title": {
+          "en": "Connect the pieces",
+          "zh": "输入与输出"
+        },
+        "body": {
+          "en": "The language model suggests phrasing; the source resume remains the factual authority. The template uses a simple document layout, while the coverage calculation measures its own keyword rules. Neither implies certification by an applicant-tracking system or improved hiring outcomes.",
+          "zh": "模型用于建议措辞，原始简历仍是事实依据。模板采用简单文档布局，覆盖分数衡量的是工具自身的关键词规则，不能代表招聘系统认证或录用效果提升。"
+        },
+        "image": {
+          "light": "/assets/presentation/integrations-light.svg",
+          "dark": "/assets/presentation/integrations-dark.svg",
+          "alt": {
+            "en": "Connect the pieces",
+            "zh": "输入与输出"
+          }
+        }
+      }
+    ],
+    "details": [
+      {
+        "title": {
+          "en": "Configuration",
+          "zh": "配置"
+        },
+        "body": {
+          "en": "DEEPSEEK_API_KEY (or OPENAI_API_KEY) configures the primary model; DASHSCOPE_API_KEY configures the fallback. CVFIT_PRIMARY_BASE_URL/MODEL and CVFIT_FALLBACK_BASE_URL/MODEL select endpoints and model names. CVFIT_TIMEOUT, CVFIT_TEMPERATURE and CVFIT_MAX_TOKENS tune calls. CVFIT_FREE_QUOTA controls the in-process per-IP daily rewrite-attempt quota (default 1). CVFIT_PAYMENT_DISABLED enables the self-hosted free export path; real payment requires separate WeChat merchant configuration and optional SDK setup.",
+          "zh": "DEEPSEEK_API_KEY（或 OPENAI_API_KEY）配置主模型，DASHSCOPE_API_KEY 配置备用模型。CVFIT_PRIMARY_BASE_URL/MODEL 与 CVFIT_FALLBACK_BASE_URL/MODEL 选择端点和模型名。CVFIT_TIMEOUT、CVFIT_TEMPERATURE、CVFIT_MAX_TOKENS 调整调用参数。CVFIT_FREE_QUOTA 控制进程内按 IP 统计的每日改写尝试额度，默认 1。CVFIT_PAYMENT_DISABLED 开启自托管免费导出路径；真实支付需要另行配置微信商户信息和可选 SDK。"
+        }
+      },
+      {
+        "title": {
+          "en": "Further use",
+          "zh": "进一步使用"
+        },
+        "body": {
+          "en": "Open http://127.0.0.1:8000 for the source-checkout UI. POST /api/rewrite accepts resume_text and jd_text; /api/export renders the resulting structured object as PDF or DOCX. Parser and STAR modules also have python -m entry points for text files. Review every rewritten factual claim before using the document.",
+          "zh": "打开 http://127.0.0.1:8000 使用源码目录中的界面。POST /api/rewrite 接受 resume_text 和 jd_text，/api/export 将返回的结构化对象导出为 PDF 或 DOCX。解析器和 STAR 模块也提供处理文本文件的 python -m 入口。使用文档前应逐项审阅改写中的事实。"
+        },
+        "code": ".venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000"
+      }
+    ]
+  }
 }

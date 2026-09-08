@@ -1,170 +1,152 @@
-<div align="right"><sub>[English](./README.en.md)&nbsp;&nbsp;⇄&nbsp;&nbsp;<b>简体中文</b></sub></div>
+[English](./README.en.md) · [Website](https://cv-fit-zh.lei6393.com) · [GitHub](https://github.com/SuperMarioYL/cv-fit-zh)
 
-<p align="center">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/hero-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/hero-light.svg">
-  <img src="./assets/hero-light.svg" width="880" alt="cv-fit-zh — 旧简历 + JD → ATS 友好的中文简历 PDF">
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="./assets/presentation/hero-mobile-dark.svg">
+  <source media="(max-width: 600px)" srcset="./assets/presentation/hero-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/presentation/hero-dark.svg">
+  <img src="./assets/presentation/hero-light.svg" width="960" alt="Hero diagram">
 </picture>
-</p>
 
-<p align="center"><sub>面向中文求职者：把旧简历按岗位 JD 一键改成 ATS 友好的中文简历 PDF，关键词覆盖可视化，按投递计费。</sub></p>
+# cv-fit-zh
 
-<p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/SuperMarioYL/cv-fit-zh?color=0071E3&label=license" alt="license"></a>
-  <a href="https://github.com/SuperMarioYL/cv-fit-zh/releases"><img src="https://img.shields.io/github/v/release/SuperMarioYL/cv-fit-zh?color=0071E3&label=release" alt="release"></a>
-  <a href="https://github.com/SuperMarioYL/cv-fit-zh/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/SuperMarioYL/cv-fit-zh/ci.yml?branch=main&label=ci" alt="CI"></a>
-  <img src="https://img.shields.io/badge/python-3.12-0071E3" alt="python">
-</p>
+**看清你的经历与岗位要求如何对应**
 
-**粘贴旧简历 + 岗位 JD，30 秒生成 ATS 友好、关键词覆盖可视化的中文简历 PDF —— 改写、评分、排版一次交易。**
+cv-fit-zh 将中文简历与目标 JD 配对，整理输入，可选用模型改写经历条目，并导出带关键词覆盖信息的文档。
 
-<h2><img src="https://api.iconify.design/tabler:topology-star-3.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> 架构</h2>
+## 为什么需要它
 
-<p align="center">
+调整简历时，容易只改措辞，却没有检查岗位要求是否得到体现。统一的 JDResume 对象同时保存原始经历、改写条目和覆盖结果，便于审阅和导出。
+
+- **保留原始经历** — 每条改写内容保留原文，方便逐项比较。
+- **解释覆盖情况** — 分数同时列出已匹配和缺失关键词。
+- **导出同一份结果** — PDF 与 DOCX 复用结构化数据，无需再次改写。
+
+## 架构
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/atlas-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/atlas-light.svg">
-  <img src="./assets/atlas-light.svg" width="880" alt="架构：旧简历+JD → STAR 改写+关键词覆盖 → 中文简历 PDF">
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="./assets/presentation/architecture-mobile-dark.svg">
+  <source media="(max-width: 600px)" srcset="./assets/presentation/architecture-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/presentation/architecture-dark.svg">
+  <img src="./assets/presentation/architecture-light.svg" width="960" alt="Architecture diagram">
 </picture>
-</p>
 
-一个 Python 进程，三层：
+JD 和简历解析器创建 Pydantic 模型。改写阶段调用已配置的 OpenAI 兼容客户端生成 STAR 条目，不可用时保留原文。当前改写流程使用同一个确定性覆盖匹配器生成分数和高亮。导出器通过 Jinja2、WeasyPrint 或 python-docx 渲染组装后的 JDResume。
 
-- **Web 层**（FastAPI + Jinja2）：单页两文本框 + 生成按钮，POST `/api/rewrite` 再 `/api/export`。
-- **LLM 工作流层**：DeepSeek-V3 主、Qwen2.5 备（OpenAI 兼容）。JD 解析 → STAR 改写 → 关键词覆盖评分，单次改写约 3 次调用。
-- **格式资产层**：中文 ATS 模板（SimSun/思源宋体、2cm 页边距、单栏无表格，不破坏国内 ATS 解析）+ weasyprint PDF / python-docx 兜底。这是护城河。
+| 组件 | 职责 |
+| --- | --- |
+| `Resume + JD` | text inputs |
+| `Parsers` | structured Pydantic models |
+| `STAR rewrite` | model or original bullets |
+| `Coverage` | substring and alias matching |
+| `Document export` | HTML / PDF / DOCX |
 
-核心原语是 **JD 对齐简历文档**（`JDResume`）：每条经历 bullet 与其 STAR 改写 + 覆盖的 JD 关键词配对。
+## 安装与快速上手
 
-## 目录
-
-- [为什么做这个](#为什么做这个)
-- [安装与快速开始](#安装与快速开始)
-- [用法](#用法)
-- [Demo](#demo)
-- [配置](#配置)
-- [付费与定价](#付费与定价)
-- [路线图](#路线图)
-- [License](#license)
-
-## 为什么做这个
-
-中文求职者投递前改简历，今天要靠两个工具：把旧简历贴进豆包/ChatGPT 对话改写，拿到一堆散文 bullet —— 没有关键词覆盖分、没有 ATS 友好的中文排版、还要自己拿 Word 或超级简历重新排版。痛点不是"写不出来"，而是"产不出一份 JD 对齐、HR 能读、排版正确的中文简历交付物"。cv-fit-zh 把**改写 + 评分 + 排版**收进一次交易：一份 JD、一份旧简历，30 秒出可投递的 PDF。
-
-> 2026 年 LLM 一次性结构化改写过了可靠门槛（解析 JD + STAR 改写 sub-元/份），career-ops（62k stars）让"JD → 简历改写"成为可被复刻的工作单元，国内 ATS 关键词过滤随投递量收紧——三件事一起到位，这块才成立。
-
-| 维度 | 豆包/ChatGPT 对话 | 超级简历模板站 | career-ops（dev CLI） | **cv-fit-zh** |
-|---|---|---|---|---|
-| JD 驱动 STAR 语义改写 | ✓ 散文 bullet | 弱 AI 改写 | ✓（英文） | ✓ |
-| JD 关键词覆盖可视化 | — | — | — | ✓ |
-| 中文 ATS 排版/字体/页边距 | — | ✓ | — | ✓ |
-| 即装即用（非开发者） | ✓ | ✓ | — | ✓ |
-| 单次出可投递 PDF | — | 需手动填模板 | — | ✓ |
-
-## 安装与快速开始
+需要 Python 3.12+ 和 uv。PDF 导出还需 WeasyPrint 原生依赖和中文字体；覆盖示例不调用 PDF 渲染。
 
 ```bash
-git clone https://github.com/SuperMarioYL/cv-fit-zh && cd cv-fit-zh
-pip install -e .
-# 起服务（配置 DeepSeek/Qwen key 见下；不配也能离线跑解析+覆盖评分）
-DEEPSEEK_API_KEY=sk-xxx uvicorn app.main:app
+git clone https://github.com/SuperMarioYL/cv-fit-zh.git
+cd cv-fit-zh
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -e .
 ```
 
-打开 `http://localhost:8000`，粘贴旧简历 + JD → 生成 → 下载 PDF。
-
-<details><summary>或用 uv / 虚拟环境</summary>
+随仓 Python 示例给出全部四个 JD 关键词及两条合成经历，运行 score_coverage_deterministic，不使用凭据或外部模型调用。
 
 ```bash
-uv venv --python 3.12 && source .venv/bin/activate
-uv pip install -e ".[dev]"
-uvicorn app.main:app
+.venv/bin/python examples/presentation_demo.py
 ```
 
-weasyprint 需要系统库 pango/cairo（macOS: `brew install pango cairo`；Ubuntu: `apt install libpango-1.0-0 libcairo2`）。
-</details>
+## 实际运行示例
+
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="./assets/presentation/process-mobile-dark.svg">
+  <source media="(max-width: 600px)" srcset="./assets/presentation/process-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/presentation/process-dark.svg">
+  <img src="./assets/presentation/process-light.svg" width="960" alt="Process diagram">
+</picture>
+
+The deterministic example matches 3 of 4 keywords; 0.75 is text coverage, not an ATS score.
+
+```text
+{
+  "jd": {
+    "title": "后端工程师",
+    "must_skills": [
+      "Python",
+      "SQL",
+      "Kubernetes"
+    ],
+    "nice_skills": [
+      "Redis"
+    ],
+    "responsibilities": []
+  },
+  "resume_bullets": [
+    "使用 FastAPI 开发服务，使用 PostgreSQL 保存业务数据。",
+    "使用 Redis 缓存查询结果。"
+  ]
+}
+{
+  "matched": [
+    "Python",
+    "SQL",
+    "Redis"
+  ],
+  "missing": [
+    "Kubernetes"
+  ],
+  "score": 0.75
+}
+Scope: deterministic substring/alias coverage; no LLM rewrite or ATS evaluation.
+```
+
+完整命令与输出保存在 [docs/demo-results.json](./docs/demo-results.json). 输入和复现代码均随仓提供。
+
+![已有终端录制](./assets/demo.gif)
+
+保留已有录制供参考；上方文字示例给出当前可复现的操作。
 
 ## 用法
 
-<h2><img src="https://api.iconify.design/tabler:terminal-2.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> 命令行与 API</h2>
-
-**1. CLI 解析 JD（无需 key，离线即可）**
+打开 http://127.0.0.1:8000 使用源码目录中的界面。POST /api/rewrite 接受 resume_text 和 jd_text，/api/export 将返回的结构化对象导出为 PDF 或 DOCX。解析器和 STAR 模块也提供处理文本文件的 python -m 入口。使用文档前应逐项审阅改写中的事实。
 
 ```bash
-python -m app.jd.parser --jd examples/sample.jd.txt
-# → {"title": "后端开发工程师（Python）", "must_skills": ["Python","SQL","分布式",...]}
+.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
-
-**2. CLI 全流程：旧简历 + JD → STAR 改写 + 覆盖分**
-
-```bash
-python -m app.resume.star --resume examples/sample.resume.txt --jd examples/sample.jd.txt
-# → JDResume JSON，含 rewritten[].star 与 coverage.score
-```
-
-**3. Web API**（FastAPI，单页 UI 在 `/`）
-
-```bash
-# 改写
-curl -s localhost:8000/api/rewrite \
-  -H 'Content-Type: application/json' \
-  -d '{"resume_text":"...","jd_text":"..."}' | jq '.coverage'
-
-# 导出 PDF
-curl -s localhost:8000/api/export \
-  -H 'Content-Type: application/json' \
-  -d '{"jd":...,"resume":...,"rewritten":...,"coverage":...,"format":"pdf","watermark":true}' \
-  -o resume.pdf
-```
-
-更多示例见 [`examples/`](./examples)。
-
-<h2><img src="https://api.iconify.design/tabler:photo.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Demo</h2>
-
-![demo](assets/demo.gif)
-
-30 秒：粘贴旧简历 + JD → STAR 改写 → 关键词覆盖分 → 下载中文简历 PDF。录屏走 CLI 离线路径（无需 API key），Web UI 同流程。
 
 ## 配置
 
-通过环境变量配置，无配置文件即可启动（仅改写需 LLM key，解析/覆盖评分离线可用）：
+DEEPSEEK_API_KEY（或 OPENAI_API_KEY）配置主模型，DASHSCOPE_API_KEY 配置备用模型。CVFIT_PRIMARY_BASE_URL/MODEL 与 CVFIT_FALLBACK_BASE_URL/MODEL 选择端点和模型名。CVFIT_TIMEOUT、CVFIT_TEMPERATURE、CVFIT_MAX_TOKENS 调整调用参数。CVFIT_FREE_QUOTA 控制进程内按 IP 统计的每日改写尝试额度，默认 1。CVFIT_PAYMENT_DISABLED 开启自托管免费导出路径；真实支付需要另行配置微信商户信息和可选 SDK。
 
-| 环境变量 | 类型 | 默认 | 含义 |
-|---|---|---|---|
-| `DEEPSEEK_API_KEY` | str | 空 | DeepSeek-V3 主模型 key（或 `OPENAI_API_KEY`） |
-| `DASHSCOPE_API_KEY` | str | 空 | Qwen2.5-72b 备用模型 key |
-| `CVFIT_PRIMARY_MODEL` | str | `deepseek-chat` | 主模型名 |
-| `CVFIT_FALLBACK_MODEL` | str | `qwen-plus` | 备用模型名 |
-| `CVFIT_HOST` / `CVFIT_PORT` | str/int | `127.0.0.1` / `8000` | 服务监听 |
-| `CVFIT_FREE_QUOTA` | int | `1` | 免费带水印档/天（无 DB，进程内计数） |
-| `CVFIT_WATERMARK` | str | `cv-fit-zh 生成` | 免费档水印文字 |
-| `CVFIT_TEMPERATURE` | float | `0.3` | LLM 温度 |
+## 集成与职责分工
 
-## 付费与定价
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="./assets/presentation/integrations-mobile-dark.svg">
+  <source media="(max-width: 600px)" srcset="./assets/presentation/integrations-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/presentation/integrations-dark.svg">
+  <img src="./assets/presentation/integrations-light.svg" width="960" alt="Integrations diagram">
+</picture>
 
-> 商业版产品，按投递计费。开源核心，自托管完全免费。
+模型用于建议措辞，原始简历仍是事实依据。模板采用简单文档布局，覆盖分数衡量的是工具自身的关键词规则，不能代表招聘系统认证或录用效果提升。
 
-- **自托管免费**：本地跑全部功能，无水印，无限制。这是"开源核心"的边界——工具本身免费。v0.2 起，`CVFIT_PAYMENT_DISABLED=1`（或不配置微信商户号）即走免费去水印路径，自托管始终完全免费。
-- **¥9.9 / 投递（去水印）**：v0.2 接入真实支付流程——`POST /api/payment` 创建 ¥9.9 订单，微信扫码支付确认后 `/api/export` 出无水印 PDF。真实微信支付 v3 Native（扫码）通过 `wechatpayv3` SDK 接入，需配置商户号（`CVFIT_WECHAT_*` env + `pip install wechatpayv3`）激活；未配置时自动回退自托管免费去水印。
-- **单份经济模型**：单次改写约 3 次 DeepSeek-V3 调用、每次 ~2k tokens，成本 sub-元，与 ¥9.9/投递 之间留 ~10x 毛利。
-- **后续路线**：评估 ¥39/月 秋招季月卡（不限次）；对象存储存去水印 PDF 临时下载链接。
+| 路径 | 已实现职责 |
+| --- | --- |
+| Web / FastAPI | rewrite and export endpoints |
+| OpenAI-compatible | optional configured LLM |
+| WeasyPrint | PDF from HTML/CSS |
+| python-docx | editable DOCX output |
+| JSON | shared JDResume data |
 
-为什么开源核心还收费？收的是"去水印的便利 + 托管交付"，不是功能锁——自托管始终完全免费。
+## 限制与后续方向
 
-## 路线图
+- 模型不可用时使用启发式解析，改写保留原条目；此回退并不是模型生成的 STAR 文案。
+- 覆盖是子串和别名匹配，不是语义证明、ATS 厂商评分或面试预测。
+- 额度和订单状态保存在进程内。本示例未验证支付、PDF 渲染或生产部署。
 
-- [x] **m1 周0 需求探针**（V2EX/少数派/小红书 证伪闸门，已通过 → 进入实现）
-- [x] **m2 JD + 旧简历结构化解析**（标题/技能/任职要求/经历条目）
-- [x] **m3 经历 STAR 改写 + 关键词覆盖评分**（matched/missing/score）
-- [x] **m4 中文 ATS 排版 + PDF/docx 导出 + Web UI 串联**（首发版本）
-- [x] **v0.2 真实 ¥9.9/投递 支付流程**（`/api/payment` + `/api/payment/notify` + 微信支付 v3 Native 扫码；自托管免费去水印路径同步上线）
-- [x] **v0.2 修复：LLM 空 choices 回退崩溃**（内容审核拒绝不再 500，正确回退 Qwen）
-- [x] **v0.2 修复：覆盖分与高亮不一致**（score 与每条 bullet 高亮统一来自同一匹配器）
-- [ ] v0.3 多中文排版模板 + 在线轻量编辑
-- [ ] v0.3 云托管形态（自托管免费 + 托管付费，非多租户 SaaS）
+已实现解析、可选模型改写、确定性覆盖、文档导出器及本地 API、支付接口。后续方向包括强化原始事实核对和导出可移植性。在线改写质量、ATS 兼容性和支付结算需单独评估。
 
-## License
+## 许可与贡献
 
-[MIT](./LICENSE)。欢迎提 [Issue](https://github.com/SuperMarioYL/cv-fit-zh/issues) 或 PR。
-
-<p align="center"><sub><a href="./LICENSE">MIT</a> © 2026 SuperMarioYL</sub></p>
+许可见 [LICENSE](./LICENSE). 反馈问题时请提供最小输入、执行命令和实际输出。

@@ -1,0 +1,90 @@
+{
+  "name": "cv-fit-zh",
+  "tagline": "See how your experience matches a job description",
+  "architecture": {
+    "title": "Structured input connects rewriting and export",
+    "nodes": [
+      {
+        "title": "Resume + JD",
+        "detail": "text inputs"
+      },
+      {
+        "title": "Parsers",
+        "detail": "structured Pydantic models"
+      },
+      {
+        "title": "STAR rewrite",
+        "detail": "model or original bullets"
+      },
+      {
+        "title": "Coverage",
+        "detail": "substring and alias matching"
+      },
+      {
+        "title": "Document export",
+        "detail": "HTML / PDF / DOCX"
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        4
+      ]
+    ]
+  },
+  "process": {
+    "title": "From input to a useful result",
+    "steps": [
+      {
+        "title": "Define JD",
+        "detail": "four required/preferred keywords"
+      },
+      {
+        "title": "Read bullets",
+        "detail": "FastAPI, PostgreSQL, Redis"
+      },
+      {
+        "title": "Match coverage",
+        "detail": "three matched, Kubernetes missing"
+      }
+    ],
+    "result": "The deterministic example matches 3 of 4 keywords; 0.75 is text coverage, not an ATS score."
+  },
+  "integrations": {
+    "title": "Supported input and output routes",
+    "items": [
+      {
+        "title": "Web / FastAPI",
+        "detail": "rewrite and export endpoints"
+      },
+      {
+        "title": "OpenAI-compatible",
+        "detail": "optional configured LLM"
+      },
+      {
+        "title": "WeasyPrint",
+        "detail": "PDF from HTML/CSS"
+      },
+      {
+        "title": "python-docx",
+        "detail": "editable DOCX output"
+      },
+      {
+        "title": "JSON",
+        "detail": "shared JDResume data"
+      }
+    ]
+  }
+}

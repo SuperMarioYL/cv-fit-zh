@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "source_revision": "36144cd8e29a1ec26ca52a112fc81b64228f5273",
+  "scope": "Deterministic JD keyword coverage of complete synthetic resume bullets. No model rewrite or ATS validation.",
+  "steps": [
+    {
+      "label": "Recorded run",
+      "body": "Deterministic JD keyword coverage of complete synthetic resume bullets. No model rewrite or ATS validation.",
+      "command": ".venv/bin/python examples/presentation_demo.py",
+      "output": "{\n  \"jd\": {\n    \"title\": \"后端工程师\",\n    \"must_skills\": [\n      \"Python\",\n      \"SQL\",\n      \"Kubernetes\"\n    ],\n    \"nice_skills\": [\n      \"Redis\"\n    ],\n    \"responsibilities\": []\n  },\n  \"resume_bullets\": [\n    \"使用 FastAPI 开发服务，使用 PostgreSQL 保存业务数据。\",\n    \"使用 Redis 缓存查询结果。\"\n  ]\n}\n{\n  \"matched\": [\n    \"Python\",\n    \"SQL\",\n    \"Redis\"\n  ],\n  \"missing\": [\n    \"Kubernetes\"\n  ],\n  \"score\": 0.75\n}\nScope: deterministic substring/alias coverage; no LLM rewrite or ATS evaluation."
+    }
+  ]
+}
