@@ -5,6 +5,43 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-09-14
+
+### Fixed
+
+- **A failed export render no longer burns the paid ¥9.9 unwatermark grant.**
+  `/api/export` claimed the single-use paid grant (atomic check-and-consume)
+  BEFORE rendering; if the render then failed (e.g. a weasyprint font/native-lib
+  error → 502), the real paid order had already been flipped to the terminal
+  `consumed` state. The paying user's natural retry silently fell back to the
+  watermarked free output — money taken, product never delivered. v0.6.0 adds
+  `refund_paid_order` (the counterpart of `consume_paid_order`): the endpoint
+  refunds the order it consumed when the render raises, so consumption stays
+  tied to a SUCCESSFUL unwatermarked export, exactly as the v0.4.0 single-use
+  milestone specified ("一次成功无水印导出后…翻转为终态 consumed"). The atomic
+  check-and-consume (no replay race window), the dev/free self-host exemption,
+  and the 24h TTL cleanup are unchanged.
+- **A non-dict LLM `basics` field no longer 500s `/api/rewrite`.** Under
+  json-mode drift a model can collapse the resume `basics` object into a string
+  (e.g. `{"basics": "张三 13800138000 …"}`); the top level IS a dict, so the
+  v0.5.0 top-level non-dict guard did not fire, and `_coerce`'s
+  `basics_raw.get("name")` raised `AttributeError` — not in `parse_resume`'s
+  `(LLMError, ValueError)` catch and not in `/api/rewrite`'s
+  `LLMUnavailableError`-only catch — so a single drifted response 500'd the
+  endpoint instead of degrading to the documented heuristic splitter. v0.6.0
+  raises `ValueError` on a non-dict `basics` (the nested experience/education
+  items were already isinstance-guarded), so the heuristic fallback engages and
+  the pipeline keeps working. This is the nested-field residual of the v0.5.0
+  `fix-llm-nondict-response-attributeerror`, closed at the coercion layer that
+  owns the "basics is an object" contract.
+
+### Added
+
+- **Version-lockstep test.** The release version lives in three hand-maintained
+  surfaces (`VERSION`, `pyproject.toml`, `app.__version__`); a new test pins
+  all three equal (and matching the current release) so a future bump that
+  misses a surface fails CI instead of shipping a mismatched release.
+
 ## [0.5.0] - 2026-09-01
 
 ### Fixed

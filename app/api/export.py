@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from app.api.payment import consume_paid_order
+from app.api.payment import consume_paid_order, refund_paid_order
 from app.config import settings
 from app.export import render_docx_bytes, render_pdf_bytes
 from app.jd.keywords import Coverage
@@ -70,13 +70,29 @@ def export_endpoint(req: ExportRequest) -> Response:
     # paid order token is single-use — a replay falls back to watermarked. The
     # dev/free self-host path (dev_mode=True) is exempt (stays paid). See
     # app/api/payment.py:consume_paid_order.
+    # v0.6.0: if the render fails after the grant was consumed, the order is
+    # refunded (refund_paid_order) so a 502 does not burn the ¥9.9 grant —
+    # single-use is tied to a SUCCESSFUL unwatermarked export.
     paid = bool(req.order_token) and consume_paid_order(req.order_token)
     wants_watermark = not paid
     watermark_text = settings.watermark_text if wants_watermark else None
+
+    def _refund_on_render_failure() -> None:
+        # v0.6.0 (fix-export-paid-token-burned-on-render-failure): the grant was
+        # consumed BEFORE rendering (atomic check-and-consume, no race window);
+        # a FAILED render must not burn it. Refund the order this request
+        # consumed (``paid`` is True only when consume_paid_order succeeded in
+        # THIS request) so the paying user's retry still unwatermarks —
+        # consumption stays tied to a SUCCESSFUL export, per the v0.4.0
+        # single-use milestone ("一次成功无水印导出后…翻转为终态 consumed").
+        if paid and req.order_token:
+            refund_paid_order(req.order_token)
+
     if req.format == "pdf":
         try:
             data = render_pdf_bytes(jd_resume, watermark=watermark_text)
         except Exception as exc:  # noqa: BLE001
+            _refund_on_render_failure()
             log.exception("PDF render failed")
             raise HTTPException(status_code=502, detail=f"PDF 导出失败：{exc}") from exc
         return Response(
@@ -90,6 +106,7 @@ def export_endpoint(req: ExportRequest) -> Response:
         try:
             data = render_docx_bytes(jd_resume, watermark=watermark_text)
         except Exception as exc:  # noqa: BLE001
+            _refund_on_render_failure()
             log.exception("docx render failed")
             raise HTTPException(status_code=502, detail=f"docx 导出失败：{exc}") from exc
         return Response(

@@ -58,6 +58,18 @@ class ParsedResume(BaseModel):
 
 def _coerce(raw: dict[str, Any]) -> ParsedResume:
     basics_raw = raw.get("basics") or {}
+    # v0.6.0 (fix-resume-basics-nondict-attributeerror): under json-mode drift a
+    # model can collapse the `basics` object into a string (e.g. "张三
+    # 13800138000 zhangsan@example.com"). The `or {}` fallback only catches
+    # falsy values, so a truthy non-dict sailed through and `.get("name")`
+    # raised AttributeError — NOT in parse_resume's ``(LLMError, ValueError)``
+    # catch — which escaped /api/rewrite's LLMUnavailableError-only catch as a
+    # 500 instead of degrading to the heuristic splitter. Raise ValueError so
+    # the documented fallback engages (same posture as the v0.5.0 top-level
+    # dict contract in app/llm/client.py:_parse_json_lenient; the nested
+    # experience/education items below are already isinstance-guarded).
+    if not isinstance(basics_raw, dict):
+        raise ValueError(f"LLM resume JSON 'basics' was not an object (got {type(basics_raw).__name__})")
     basics = Basics(
         name=str(basics_raw.get("name") or "").strip(),
         phone=str(basics_raw.get("phone") or "").strip(),

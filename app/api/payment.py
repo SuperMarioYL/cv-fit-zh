@@ -134,6 +134,25 @@ class _OrderStore:
             order["status"] = "consumed"
         return True
 
+    def refund_consumed(self, token: str) -> bool:
+        """Restore a consumed real paid order to ``paid`` (render-failure refund).
+
+        v0.6.0 counterpart of :meth:`consume_paid`: /api/export claims the
+        single-use grant BEFORE rendering (atomic check-and-consume, no race
+        window); if the render then FAILS, the order is restored here so the
+        paying user's ¥9.9 grant is not burned by a 502 — consumption stays
+        tied to a SUCCESSFUL unwatermarked export, exactly as the v0.4.0
+        single-use milestone specified ("一次成功无水印导出后…翻转为终态
+        consumed"). Only flips ``consumed`` -> ``paid``; anything else (never
+        consumed, already refunded, dev/free, expired) is a no-op returning
+        False, so a replayed token can never be refunded into a second grant.
+        """
+        order = self.get(token)
+        if order is None or order.get("status") != "consumed":
+            return False
+        order["status"] = "paid"
+        return True
+
 
 _store = _OrderStore()
 
@@ -343,6 +362,20 @@ def consume_paid_order(order_token: str) -> bool:
     ``is_paid_order`` check + later consume to avoid a check-then-consume race.
     """
     return _store.consume_paid(order_token)
+
+
+def refund_paid_order(order_token: str) -> bool:
+    """Public hook for /api/export: undo this request's consumption when the
+    render FAILS, so a paying user's ¥9.9 unwatermark grant survives a 502.
+
+    v0.6.0 (fix-export-paid-token-burned-on-render-failure): export_endpoint
+    consumes the grant BEFORE rendering (see consume_paid_order); if the
+    render raises, the endpoint refunds the order it just consumed before
+    returning the 502, so the user's retry still unwatermarks. Only a
+    ``consumed`` real paid order is restored to ``paid`` — dev/free orders
+    (never consumed) and already-successful consumptions are untouched.
+    """
+    return _store.refund_consumed(order_token)
 
 
 class CreateOrderResponse(OrderResult):

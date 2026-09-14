@@ -35,8 +35,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-import app.llm.client as llm_client_mod
 import app.api.payment as payment_mod
+import app.llm.client as llm_client_mod
 from app.main import app
 
 
