@@ -83,6 +83,14 @@ class _FreeQuotaStore:
         also spends their daily slot; the ¥9.9/投递 unwatermark path is the
         escape hatch for repeated attempts.
         """
+        # v0.7.0 (cv-fit-zh-quality-1): prune other clients' stale buckets from
+        # previous days so the per-IP map stays bounded (one entry per IP seen
+        # today, not per IP ever). consume() runs at most free_daily_quota times
+        # per IP per day, so the O(n) scan is amortised to nothing. remaining()
+        # still self-heals the current IP's stale bucket via _entry.
+        today_iso = datetime.date.today().isoformat()
+        for ip in [k for k, (d, _) in self._counts.items() if d != today_iso]:
+            self._counts.pop(ip, None)
         today, count = self._entry(client_ip)
         self._counts[client_ip] = (today, count + 1)
 

@@ -108,8 +108,18 @@ def score_coverage_deterministic(
 
 def _coerce_coverage(raw: dict[str, Any], keywords: list[str]) -> Coverage:
     """Build a Coverage from raw LLM JSON, reconciling against the keyword list."""
-    matched_raw = raw.get("matched") or []
-    matched = [str(k).strip() for k in matched_raw if str(k).strip()]
+    # v0.7.0 (cv-fit-zh-fix-2): a drifted {"matched": 7} (non-iterable) raised
+    # TypeError here, escaping score_coverage's ``(LLMError, ValueError)`` catch.
+    # A truthy non-list raises ValueError — the caught, fallback-triggering
+    # error — so score_coverage degrades to the deterministic scorer (treating
+    # it as empty would report a false 0% instead of scoring the bullets).
+    # Falsy values keep the old `or []` empty semantics.
+    matched_raw = raw.get("matched")
+    if matched_raw and not isinstance(matched_raw, list):
+        raise ValueError(
+            f"LLM coverage JSON 'matched' was not a list (got {type(matched_raw).__name__})"
+        )
+    matched = [str(k).strip() for k in matched_raw or [] if str(k).strip()]
     # Reconcile: every keyword must land in exactly one bucket. If the model
     # drifted, rebuild deterministically from matched so score is honest. The
     # raw `missing` list is intentionally ignored — it is re-derived below.

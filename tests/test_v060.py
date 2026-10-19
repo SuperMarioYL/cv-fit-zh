@@ -271,4 +271,4 @@ def test_version_lockstep():
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     pyproject_version = pyproject["project"]["version"]
 
-    assert version_file == pyproject_version == __version__ == "0.6.0"
+    assert version_file == pyproject_version == __version__ == "0.7.0"

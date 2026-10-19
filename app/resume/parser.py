@@ -76,8 +76,24 @@ def _coerce(raw: dict[str, Any]) -> ParsedResume:
         email=str(basics_raw.get("email") or "").strip(),
         summary=str(basics_raw.get("summary") or basics_raw.get("objective") or "").strip(),
     )
+    # v0.7.0 (cv-fit-zh-fix-2): a drifted model response can carry a truthy
+    # NON-ITERABLE value in a list field (e.g. {"experience": 3}). Iterating it
+    # raised TypeError, which is NOT in parse_resume's ``(LLMError, ValueError)``
+    # catch and escaped /api/rewrite as a 500 instead of degrading to the
+    # heuristic splitter. A truthy non-list raises ValueError — the caught,
+    # fallback-triggering error, exactly the v0.6.0 `basics` posture — so the
+    # heuristic splitter recovers the whole resume from the raw text (treating
+    # it as empty instead would silently drop the user's experience while
+    # keeping the LLM basics). Falsy values (None/""/0) keep the old `or []`
+    # empty-list semantics; app/jd/parser.py:_as_str_list shows the same
+    # field-level guard posture.
+    experience_raw = raw.get("experience")
+    if experience_raw and not isinstance(experience_raw, list):
+        raise ValueError(
+            f"LLM resume JSON 'experience' was not a list (got {type(experience_raw).__name__})"
+        )
     exp_list: list[Experience] = []
-    for item in raw.get("experience") or []:
+    for item in experience_raw or []:
         if not isinstance(item, dict):
             continue
         bullets = item.get("bullets") or []
@@ -91,8 +107,13 @@ def _coerce(raw: dict[str, Any]) -> ParsedResume:
                 bullets=[str(b).strip() for b in bullets if str(b).strip()],
             )
         )
+    education_raw = raw.get("education")
+    if education_raw and not isinstance(education_raw, list):
+        raise ValueError(
+            f"LLM resume JSON 'education' was not a list (got {type(education_raw).__name__})"
+        )
     edu_list: list[Education] = []
-    for item in raw.get("education") or []:
+    for item in education_raw or []:
         if not isinstance(item, dict):
             continue
         edu_list.append(
@@ -144,6 +165,16 @@ _NAME_RE = re.compile(r"^([\u4e00-\u9fa5]{2,4})\b")
 # An experience entry header: "公司 职位 时间" or "职位 | 公司 | 时间" lines.
 # We treat a non-empty line that is NOT a bullet as a potential entry header.
 _BULLET_RE = re.compile(r"^\s*[•·\-\*▸▪‣►\d]+[.)、]?\s*")
+
+# v0.7.0 (cv-fit-zh-fix-1): a DATE-FIRST entry header ("2021.07-至今 某公司 某职位",
+# a common CN resume layout without pipe separators) also matches _BULLET_RE,
+# because its character class includes \d — so the line was mis-classified as a
+# bullet, and the sub() below then chewed off the leading "2021." as a list
+# ordinal, corrupting the text and merging separate jobs into the previous
+# entry. A 4-digit year + date separator is the discriminator: numbered list
+# bullets are 1-2 digit ordinals, so requiring \d{4} + separator cannot
+# misclassify them.
+_DATE_FIRST_RE = re.compile(r"^\d{4}\s*[.．年/-]")
 
 # Company-ish suffixes and title-ish suffixes for content-based classification.
 _COMPANY_RE = re.compile(r"公司|集团|有限|股份|院$|局$|中心|实验室|大学|学校|厂")
@@ -201,6 +232,28 @@ def _split_sections(text: str) -> dict[str, list[str]]:
     return sections
 
 
+def _split_entry_header(line: str) -> list[str]:
+    """Split an entry-header line into (title/company/dates) candidate parts.
+
+    Pipe / 2+-space separated lines (the common layouts) keep the existing
+    behaviour. A date-first line ("2021.07-至今 某公司 某职位", single spaces,
+    no pipes) has no separator to split on, so the leading date token is peeled
+    off first and the rest is split on whitespace — without this the whole line
+    would land in one part and the date would swallow the company/title.
+    """
+    parts = re.split(r"\s*[|｜]\s*|\s{2,}", line, maxsplit=2)
+    if len(parts) > 1:
+        return parts
+    m = _DATE_FIRST_RE.match(line)
+    if m:
+        dates = m.group(0).strip()
+        rest = line[m.end():].strip(" |｜，,-—")
+        if rest:
+            return [dates, *[p for p in re.split(r"\s+", rest) if p]]
+        return [dates]
+    return parts
+
+
 def _parse_heuristic(text: str) -> ParsedResume:
     sections = _split_sections(text)
     top = sections.get("_top", [])
@@ -236,7 +289,10 @@ def _parse_heuristic(text: str) -> ParsedResume:
     experiences: list[Experience] = []
     current_exp: Experience | None = None
     for line in exp_lines:
-        if _BULLET_RE.match(line):
+        # v0.7.0 (cv-fit-zh-fix-1): a date-first entry header matches _BULLET_RE
+        # (its class includes \d); it must take the header branch, not be
+        # chewed into a bullet with its leading "2021." stripped.
+        if _BULLET_RE.match(line) and not _DATE_FIRST_RE.match(line):
             bullet = _BULLET_RE.sub("", line).strip()
             if bullet:
                 if current_exp is None:
@@ -247,7 +303,7 @@ def _parse_heuristic(text: str) -> ParsedResume:
             # Treat as a new entry header. Heuristically split title/company/dates
             # by content (company often carries a suffix like 公司/集团/院; the date
             # field carries a 4-digit year). Positional fallback covers the rest.
-            parts = re.split(r"\s*[|｜]\s*|\s{2,}", line, maxsplit=2)
+            parts = _split_entry_header(line)
             title, company, dates = _classify_entry_parts(parts)
             current_exp = Experience(title=title.strip(), company=company.strip(), dates=dates.strip())
             experiences.append(current_exp)

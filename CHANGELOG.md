@@ -5,6 +5,46 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-10-20
+
+### Fixed
+
+- **Date-first experience headers no longer corrupt the offline resume parse.**
+  The heuristic splitter treats any line starting with digits as a list bullet,
+  so a date-first entry header — `2021.07-至今 某科技公司 后端开发工程师`, a
+  common Chinese resume layout without pipe separators — was mis-classified as
+  a bullet, its leading `2021.` chewed off as a list ordinal, and the whole
+  entry merged into the previous job with empty company/title/dates. The
+  splitter now recognises the 4-digit-year + date-separator prefix as an entry
+  header and splits the date, company and title apart; numbered bullets
+  (`1.` / `12.`) and pipe-separated layouts parse exactly as before. This path
+  is the default when no LLM key is configured (and the documented fallback
+  when the LLM fails), and is reachable from both the web UI and
+  `python -m app.resume.parser --resume x.txt`.
+- **A drifted LLM list field no longer 500s `/api/rewrite`.** A model response
+  like `{"experience": 3}` (a number where a list belongs) raised `TypeError`
+  while iterating the field — `TypeError` is not in `parse_resume`'s
+  `(LLMError, ValueError)` fallback catch nor in `/api/rewrite`'s
+  `LLMUnavailableError`-only catch, so a single drifted response 500'd the
+  endpoint. The keyword-coverage response had the same gap (`{"matched": 7}`
+  escaped `score_coverage`'s fallback). A truthy non-list value now raises
+  `ValueError` — the caught, fallback-triggering error — so `parse_resume`
+  degrades to the heuristic splitter (recovering the experience from the raw
+  text instead of silently dropping it) and `score_coverage` degrades to the
+  deterministic scorer. This closes the field-level residual of the v0.5.0 /
+  v0.6.0 non-dict guards at the coercion layer that owns the field contract.
+
+### Changed
+
+- **Bounded memory for the in-process stores.** Expired payment orders were
+  only removed if that exact token happened to be polled again after expiry,
+  and the free-rewrite quota kept one bucket per client IP forever — a
+  long-running self-host instance grew monotonically. Both stores now sweep
+  stale entries opportunistically on write (order create / quota consume), so
+  memory stays bounded with no new dependencies. The 24h order TTL, the
+  dev/free self-host exemption, single-use consumption with render-failure
+  refund, and the daily quota semantics are unchanged.
+
 ## [0.6.0] - 2026-09-14
 
 ### Fixed

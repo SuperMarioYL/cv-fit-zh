@@ -78,7 +78,22 @@ class _OrderStore:
     def __init__(self) -> None:
         self._orders: dict[str, dict[str, Any]] = {}
 
+    def _evict_expired(self) -> None:
+        """v0.7.0 (cv-fit-zh-quality-1): drop expired orders opportunistically.
+
+        Previously expired entries were only removed if that exact token was
+        get()-accessed again after expiry, so a long-running instance
+        accumulated one dict entry per order forever. Sweeping on create keeps
+        the in-process store bounded (create is low-frequency, so the O(n)
+        scan is amortised to nothing). Purely a memory bound — expired orders
+        were already invisible to get()/is_paid/consume_paid.
+        """
+        now = time.time()
+        for tok in [t for t, o in self._orders.items() if now - o["created_at"] > _ORDER_TTL_SECONDS]:
+            self._orders.pop(tok, None)
+
     def create(self, out_trade_no: str, amount_cents: int, dev_mode: bool = False) -> str:
+        self._evict_expired()
         token = secrets.token_urlsafe(24)
         self._orders[token] = {
             "out_trade_no": out_trade_no,
