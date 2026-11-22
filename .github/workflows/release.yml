@@ -31,6 +31,16 @@ jobs:
         with:
           name: dist
           path: dist/*
+      - name: Attach dist to the GitHub release
+        # v0.8.0: the steps above built dist/* but only attached it to the
+        # workflow run, so the published release carried 0 downloadable assets.
+        # view-or-create makes this safe against publish-time release creation.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "Release $GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
 
   # Opt-in PyPI trusted publishing. A fresh repo has no Trusted Publisher
   # registered, so this is gated behind the PYPI_PUBLISH repo variable to keep

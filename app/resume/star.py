@@ -75,6 +75,14 @@ def _coerce_rewritten(
             import re
 
             covers = [c.strip() for c in re.split(r"[,，、；;]+", covers) if c.strip()]
+        elif not isinstance(covers, list):
+            # v0.8.0 (m2_fix_nested_llm_bullets): a drifted non-list value (e.g.
+            # {"covers_keywords": 7}) raised TypeError while iterating below, which
+            # escaped rewrite_star's (LLMError, ValueError) catch and 502'd
+            # /api/rewrite. covers_keywords is advisory — rewrite_star re-derives
+            # it deterministically — so degrade it to empty and keep the valid
+            # rewritten text instead of failing the request.
+            covers = []
         out.append(
             RewrittenBullet(
                 orig=orig,

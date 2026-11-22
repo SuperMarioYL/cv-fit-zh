@@ -62,18 +62,52 @@ def _normalize(s: str) -> str:
     return re.sub(r"[，。、；；：·\s]+", "", s)
 
 
+_LATIN_CHAR_RE = re.compile(r"[a-z0-9]")
+
+
+def _latin_token_hit(term: str, haystack: str) -> bool:
+    """True if ``term`` occurs in ``haystack`` as a whole alphanumeric token.
+
+    v0.8.0 (m3_fix_coverage_honesty): _normalize strips the spaces/punctuation
+    that delimit Latin words, so a plain substring test let short keywords match
+    inside longer words ("go" in "google", "java" in "javascript", "r" in
+    "rust") and inflated the headline coverage score. A hit only counts when the
+    characters on both sides are not [a-z0-9]. CJK neighbours are not Latin word
+    characters, so "go语言" still matches "Go".
+    """
+    start = 0
+    while True:
+        idx = haystack.find(term, start)
+        if idx < 0:
+            return False
+        end = idx + len(term)
+        before_ok = idx == 0 or not _LATIN_CHAR_RE.match(haystack[idx - 1])
+        after_ok = end == len(haystack) or not _LATIN_CHAR_RE.match(haystack[end])
+        if before_ok and after_ok:
+            return True
+        start = idx + 1
+
+
+def _term_hit(term: str, haystack: str) -> bool:
+    """CJK terms match as substrings; Latin terms must be whole tokens."""
+    if _CJK_RE.search(term):
+        return term in haystack
+    return _latin_token_hit(term, haystack)
+
+
 def _keyword_hit(keyword: str, bullets: list[str]) -> bool:
     """True if a keyword (or an obvious synonym) appears in any bullet."""
     kw = _normalize(keyword)
     if not kw:
         return False
     haystack = " ".join(_normalize(b) for b in bullets)
-    if kw in haystack:
+    if _term_hit(kw, haystack):
         return True
     # A few common abbreviation/alias pairs so the baseline isn't too brittle.
     aliases = {
         "python": ["py", "django", "flask", "fastapi"],
         "java": ["jvm", "spring", "springboot"],
+        "go": ["golang"],
         "sql": ["mysql", "postgres", "postgresql", "hive"],
         "分布式": ["分布式系统", "微服务", "rpc", "grpc"],
         "高并发": ["高吞吐", "qps", "并发"],
@@ -82,11 +116,11 @@ def _keyword_hit(keyword: str, bullets: list[str]) -> bool:
     for key, syns in aliases.items():
         if kw == _normalize(key):
             for syn in syns:
-                if _normalize(syn) in haystack:
+                if _term_hit(_normalize(syn), haystack):
                     return True
         if kw in [_normalize(s) for s in syns]:
             # if the keyword IS a synonym, accept the canonical too
-            if _normalize(key) in haystack:
+            if _term_hit(_normalize(key), haystack):
                 return True
     return False
 
@@ -123,9 +157,13 @@ def _coerce_coverage(raw: dict[str, Any], keywords: list[str]) -> Coverage:
     # Reconcile: every keyword must land in exactly one bucket. If the model
     # drifted, rebuild deterministically from matched so score is honest. The
     # raw `missing` list is intentionally ignored — it is re-derived below.
-    matched_set = {k for k in matched}
-    final_matched = [kw for kw in keywords if kw in matched_set]
-    final_missing = [kw for kw in keywords if kw not in matched_set]
+    # v0.8.0 (m3_fix_coverage_honesty): compare on the module's normalised form
+    # (NFKC + lowercase + punctuation/whitespace stripped). json-mode replies
+    # commonly lower-case the echoed keywords; exact string equality turned an
+    # honest match into a false 0% score. Output keeps the canonical casing.
+    matched_norm = {_normalize(k) for k in matched}
+    final_matched = [kw for kw in keywords if _normalize(kw) in matched_norm]
+    final_missing = [kw for kw in keywords if _normalize(kw) not in matched_norm]
     total = len(keywords)
     score = (len(final_matched) / total) if total else 0.0
     return Coverage(matched=final_matched, missing=final_missing, score=score)

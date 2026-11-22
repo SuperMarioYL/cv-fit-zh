@@ -108,8 +108,8 @@
       "zh": "模型不可用时使用启发式解析，改写保留原条目；此回退并不是模型生成的 STAR 文案。"
     },
     {
-      "en": "Coverage is substring/alias matching, not semantic proof, an ATS vendor score or an interview prediction.",
-      "zh": "覆盖是子串和别名匹配，不是语义证明、ATS 厂商评分或面试预测。"
+      "en": "Coverage is deterministic whole-token (Latin) / substring (Chinese) matching with a small alias table — not semantic proof, an ATS vendor score or an interview prediction.",
+      "zh": "覆盖是英文整词、中文子串与别名的确定性匹配，不是语义证明、ATS 厂商评分或面试预测。"
     },
     {
       "en": "Quota and order state are in-process. This demo does not verify payment, PDF rendering or a production deployment.",

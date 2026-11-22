@@ -97,6 +97,16 @@ def _coerce(raw: dict[str, Any]) -> ParsedResume:
         if not isinstance(item, dict):
             continue
         bullets = item.get("bullets") or []
+        # v0.8.0 (m2_fix_nested_llm_bullets): a truthy non-list/non-string value
+        # (e.g. {"bullets": 3}) raised TypeError while iterating below — not in
+        # parse_resume's (LLMError, ValueError) catch, so it 500'd /api/rewrite.
+        # bullets carry user content, so raise ValueError (the caught,
+        # fallback-triggering error) and let the heuristic splitter recover the
+        # experience from the raw text instead of silently dropping it.
+        if bullets and not isinstance(bullets, (list, str)):
+            raise ValueError(
+                f"LLM resume JSON 'bullets' was not a list (got {type(bullets).__name__})"
+            )
         if isinstance(bullets, str):
             bullets = [b.strip() for b in re.split(r"[\n•·\-\*]+", bullets) if b.strip()]
         exp_list.append(
@@ -176,6 +186,14 @@ _BULLET_RE = re.compile(r"^\s*[•·\-\*▸▪‣►\d]+[.)、]?\s*")
 # misclassify them.
 _DATE_FIRST_RE = re.compile(r"^\d{4}\s*[.．年/-]")
 
+# v0.8.0 (m1_fix_date_first_dates): _DATE_FIRST_RE above is only the header/bullet
+# DISCRIMINATOR (year + separator). v0.7.0 reused its match as the date TOKEN, so
+# "2021.07-至今 某科技公司 后端开发工程师" parsed with dates == "2021." and the
+# rest of the range ("07-至今") was discarded. This token regex captures the whole
+# no-space date range for the header splitter; whitespace-separated date layouts
+# are intentionally unchanged.
+_DATE_TOKEN_RE = re.compile(r"^\d{4}\s*[.．年/-][^\s|｜，,;；]*")
+
 # Company-ish suffixes and title-ish suffixes for content-based classification.
 _COMPANY_RE = re.compile(r"公司|集团|有限|股份|院$|局$|中心|实验室|大学|学校|厂")
 _TITLE_RE = re.compile(r"师|员|工程师|开发|实习|总监|经理|顾问|设计|架构|负责|主管")
@@ -244,7 +262,9 @@ def _split_entry_header(line: str) -> list[str]:
     parts = re.split(r"\s*[|｜]\s*|\s{2,}", line, maxsplit=2)
     if len(parts) > 1:
         return parts
-    m = _DATE_FIRST_RE.match(line)
+    # v0.8.0 (m1_fix_date_first_dates): use the full date token, not the
+    # discriminator's year+separator prefix.
+    m = _DATE_TOKEN_RE.match(line)
     if m:
         dates = m.group(0).strip()
         rest = line[m.end():].strip(" |｜，,-—")

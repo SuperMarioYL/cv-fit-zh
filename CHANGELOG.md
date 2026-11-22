@@ -5,6 +5,52 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-11-23
+
+### Fixed
+
+- **Date-first experience headers keep their full date range.** The v0.7.0
+  splitter reused its 4-digit-year *discriminator*
+  (`_DATE_FIRST_RE`, `app/resume/parser.py`) as the date token, so
+  `2021.07-至今 某科技公司 后端开发工程师` parsed with `dates == "2021."` and the
+  rest of the range (`07-至今`) was discarded — then rendered into the exported
+  PDF/DOCX. A separate token regex now captures the whole no-space range for
+  extraction; the discriminator still decides bullet vs. header, so numbered
+  bullets, pipe layouts and year-only ranges parse exactly as before.
+- **A drifted nested LLM `bullets` field no longer 500s `/api/rewrite`.** A
+  response like `{"experience": [{"bullets": 3}]}` raised `TypeError` while
+  iterating the field — outside `parse_resume`'s `(LLMError, ValueError)` catch
+  and outside `/api/rewrite`'s `LLMUnavailableError`-only catch. A truthy
+  non-list/non-string value now raises `ValueError` (the caught,
+  fallback-triggering error), so the heuristic splitter recovers the experience
+  from the raw text. The advisory `covers_keywords` field had the same hole; it
+  now degrades to an empty list (it is re-derived deterministically), so a
+  drifted annotation no longer destroys valid rewritten text.
+- **Latin keywords only match whole tokens; LLM coverage reconciliation is
+  case-insensitive.** The deterministic matcher normalised both sides and then
+  used a plain substring test, so `Go` matched inside `Google`, `Java` inside
+  `JavaScript` and `R` inside `Rust` — inflating the headline coverage score
+  (reproduced: 3/5 with zero real coverage). Latin terms and Latin alias
+  synonyms now require alphanumeric word boundaries; Chinese keywords keep
+  substring matching, so `SQL` still matches `PostgreSQL` (alias) and
+  `分布式` still matches inside a longer phrase, and the README demo stays
+  3/4 = 0.75. Separately, the LLM matched-list was reconciled against the
+  canonical keywords with exact string equality, so a case-drifted reply such
+  as `["python", "kubernetes"]` produced a false 0% score; reconciliation now
+  compares on the same normalised form and reports the canonical casing.
+- **Releases now carry their build artifacts.** The release workflow built a
+  wheel, sdist and checksums file but only attached them to the workflow run,
+  so the published GitHub release had zero downloadable assets. The workflow
+  now ensures the release exists and uploads `dist/*` to it.
+
+### Changed
+
+- **Coverage documentation now states the actual matching rules.** The READMEs
+  and the site describe whole-token Latin matching plus substring Chinese
+  matching and the small alias table — still a deterministic keyword measure,
+  not an ATS vendor score. The stale v0.1 manual-transfer payment copy in the
+  web template was replaced with the shipped payment behaviour.
+
 ## [0.7.0] - 2026-10-20
 
 ### Fixed

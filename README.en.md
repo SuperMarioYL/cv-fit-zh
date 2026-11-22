@@ -37,7 +37,7 @@ JD and resume parsers create Pydantic models. The rewrite stage asks a configure
 | `Resume + JD` | text inputs |
 | `Parsers` | structured Pydantic models |
 | `STAR rewrite` | model or original bullets |
-| `Coverage` | substring and alias matching |
+| `Coverage` | whole-token Latin, substring Chinese, aliases |
 | `Document export` | HTML / PDF / DOCX |
 
 ## Install and quickstart
@@ -142,7 +142,7 @@ The language model suggests phrasing; the source resume remains the factual auth
 ## Limits and next steps
 
 - Without a usable model, parsing uses heuristics and rewriting keeps original bullets. That fallback is not generated STAR writing.
-- Coverage is substring/alias matching, not semantic proof, an ATS vendor score or an interview prediction.
+- Coverage is deterministic whole-token (Latin) / substring (Chinese) matching with a small alias table — not semantic proof, an ATS vendor score or an interview prediction.
 - Quota and order state are in-process. This demo does not verify payment, PDF rendering or a production deployment.
 
 Implemented: parsing, optional model rewriting, deterministic coverage, document exporters and local API/payment hooks. Useful next work includes stronger source-fact review and export portability. Online rewrite quality, ATS compatibility and payment settlement need separate evaluation.

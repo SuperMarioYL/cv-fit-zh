@@ -37,7 +37,7 @@ JD 和简历解析器创建 Pydantic 模型。改写阶段调用已配置的 Ope
 | `Resume + JD` | text inputs |
 | `Parsers` | structured Pydantic models |
 | `STAR rewrite` | model or original bullets |
-| `Coverage` | substring and alias matching |
+| `Coverage` | 英文整词 / 中文子串 + 别名匹配 |
 | `Document export` | HTML / PDF / DOCX |
 
 ## 安装与快速上手
@@ -142,7 +142,7 @@ DEEPSEEK_API_KEY（或 OPENAI_API_KEY）配置主模型，DASHSCOPE_API_KEY 配�
 ## 限制与后续方向
 
 - 模型不可用时使用启发式解析，改写保留原条目；此回退并不是模型生成的 STAR 文案。
-- 覆盖是子串和别名匹配，不是语义证明、ATS 厂商评分或面试预测。
+- 覆盖是英文整词、中文子串与别名的确定性匹配，不是语义证明、ATS 厂商评分或面试预测。
 - 额度和订单状态保存在进程内。本示例未验证支付、PDF 渲染或生产部署。
 
 已实现解析、可选模型改写、确定性覆盖、文档导出器及本地 API、支付接口。后续方向包括强化原始事实核对和导出可移植性。在线改写质量、ATS 兼容性和支付结算需单独评估。
